@@ -10,6 +10,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using Dynamo.Controls;
+using Dynamo.UI.Views;
 using Dynamo.Utilities;
 using Dynamo.ViewModels;
 using Dynamo.Wpf.Views.GuidedTour;
@@ -24,6 +25,10 @@ namespace Dynamo.Wpf.UI.GuidedTour
     {
         #region Private Fields
         private static string WindowNamePopup = "PopupWindow";
+        private static readonly string NextButton = "NextButton";
+        private static string calculateLibraryFuncName = "CalculateLibraryItemLocation";
+        private static string libraryScrollToBottomFuncName = "LibraryScrollToBottom";
+        private static string subscribePackageClickedFuncName = "subscribePackageClickedEvent";
         #endregion
         #region Events
         //This event will be raised when a popup (Step) is closed by the user pressing the close button (PopupWindow.xaml).
@@ -221,7 +226,24 @@ namespace Dynamo.Wpf.UI.GuidedTour
             //After UI Automation and calculate the target we need to highlight the element (otherwise probably won't exist)
             SetHighlightSection(true);
 
+            if (HostPopupInfo.WindowName != null  && HostPopupInfo.WindowName.Equals(nameof(LibraryView)))
+            {
+                var automationStep = (from automation in UIAutomation
+                                      where automation.Name.Equals(calculateLibraryFuncName)
+                                      select automation).FirstOrDefault();
+                GuidesValidationMethods.CalculateLibraryItemLocation(this, automationStep, true, Guide.GuideFlow.CURRENT);
+            }
+   
+
             stepUIPopup.IsOpen = true;
+
+            if (this.StepUIPopup is PopupWindow popupWindow)
+            {
+                if (Guide.FindChild((popupWindow).mainPopupGrid, NextButton) is Button nextbuttonFound)
+                {
+                    nextbuttonFound.Focus();
+                }
+            }
         }
 
         /// <summary>
@@ -366,7 +388,55 @@ namespace Dynamo.Wpf.UI.GuidedTour
                 UpdatePopupLocationInvoke(stepUiPopupWindow?.webBrowserWindow);
             }
         }
-        
+
+        /// <summary>
+        /// Update the Location of Popups only when they are located over the Library (HostPopupInfo.WindowName = LibraryView)
+        /// </summary>
+        public void UpdateLibraryPopupsLocation()
+        {
+            if (HostPopupInfo.WindowName != null && HostPopupInfo.WindowName.Equals(nameof(LibraryView)))
+            {
+                var automationScrollDownStep = (from automation in UIAutomation
+                                      where automation.Name.Equals(libraryScrollToBottomFuncName)
+                                      select automation).FirstOrDefault();
+                if (automationScrollDownStep == null) return;
+                GuidesValidationMethods.LibraryScrollToBottom(this, automationScrollDownStep, true, Guide.GuideFlow.CURRENT);
+
+                var automationCalculateStep = (from automation in UIAutomation
+                                      where automation.Name.Equals(calculateLibraryFuncName)
+                                      select automation).FirstOrDefault();
+                if (automationCalculateStep == null) return;
+                GuidesValidationMethods.CalculateLibraryItemLocation(this, automationCalculateStep, true, Guide.GuideFlow.CURRENT);
+            }
+        }
+
+        /// <summary>
+        /// This method will update the interactions of the Popup with the Library like the highligthed items or the event subscriptions
+        /// </summary>
+        internal void UpdateLibraryInteractions()
+        {
+            var automationSubscribePackage = (from automation in UIAutomation
+                                              where automation.JSFunctionName.Equals(subscribePackageClickedFuncName)
+                                              select automation).FirstOrDefault();
+            if (automationSubscribePackage == null) return;
+            ExecuteUIAutomationStep(automationSubscribePackage, true, Guide.GuideFlow.FORWARD);
+
+            SetHighlightSection(true);
+        }
+
+      
+
+        /// <summary>
+        /// This method will update the Popup vertical location
+        /// </summary>
+        /// <param name="verticalPosition"></param>
+        internal void UpdatePopupVerticalPlacement(double verticalPosition)
+        {
+            stepUIPopup.VerticalOffset = verticalPosition + HostPopupInfo.VerticalPopupOffSet;
+            UpdatePopupLocationInvoke(stepUIPopup);
+        }
+
+
         private void UpdatePopupLocationInvoke(Popup popUp)
         {
             if(popUp != null && popUp.IsOpen)
@@ -383,6 +453,7 @@ namespace Dynamo.Wpf.UI.GuidedTour
         /// <param name="enableUIAutomation">Enable/Disable the automation action for a specific UIElement</param>
         private void ExecuteUIAutomationStep(StepUIAutomation uiAutomationData, bool enableUIAutomation, Guide.GuideFlow currentFlow)
         {
+            var popupBorderName = "SubmenuBorder";
             //This section will search the UIElement dynamically in the Dynamo VisualTree in which an automation action will be executed
             UIElement automationUIElement = Guide.FindChild(MainWindow, uiAutomationData.Name);
             if (automationUIElement != null)
@@ -403,6 +474,17 @@ namespace Dynamo.Wpf.UI.GuidedTour
                             menuEntry.IsSubmenuOpen = enableUIAutomation;
                             menuEntry.StaysOpenOnClick = enableUIAutomation;
                             break;                    
+                    }
+                    //Means that the Popup location needs to be updated after the MenuItem is opened
+                    if(uiAutomationData.UpdatePlacementTarget)
+                    {
+                        //We need to find the border inside the MenuItem.Popup so we can get its Width (this template is defined in MenuStyleDictionary.xaml)
+                        var menuPopupBorder = menuEntry.Template.FindName(popupBorderName, menuEntry) as Border;
+                        if (menuPopupBorder == null) return;
+
+                        //We need to do this substraction so the Step Popup wil be located at the end of the MenuItem Popup.
+                        stepUIPopup.HorizontalOffset = (menuPopupBorder.ActualWidth - menuEntry.ActualWidth) + HostPopupInfo.HorizontalPopupOffSet;
+                        UpdatePopupLocationInvoke(stepUIPopup);
                     }
                     break;
                 //In this case the UI Automation will be done using a Function located in the static class GuidesValidationMethods
