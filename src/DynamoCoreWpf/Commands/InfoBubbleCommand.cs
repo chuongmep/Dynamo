@@ -12,8 +12,19 @@ namespace Dynamo.ViewModels
         private DelegateCommand changeInfoBubbleStateCommand;
         private DelegateCommand openDocumentationLinkCommand;
         private DelegateCommand dismissMessageCommand;
+        private DelegateCommand copyMessageCommand;
         private DelegateCommand undismissMessageCommand;
 
+        public DelegateCommand CopyMessageCommand
+        {
+            get
+            {
+                if (copyMessageCommand == null)
+                    copyMessageCommand = new DelegateCommand(CopyMessageContent, CanCopyMessageContent);
+                return copyMessageCommand;
+                    
+            }
+        }
         public DelegateCommand UpdateContentCommand
         {
             get

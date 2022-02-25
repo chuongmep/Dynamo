@@ -505,6 +505,16 @@ namespace Dynamo.ViewModels
             TargetBotRight = data.BotRight;
             DocumentationLink = data.Link;
         }
+        private void CopyMessageContent(object parameter)
+        {
+            MessageBox.Show("Hello");
+            //TODO
+        }
+        private bool CanCopyMessageContent(object parameter)
+        {
+            //TODO
+            return true;
+        }
 
         [Obsolete]
         private bool CanUpdateInfoBubbleCommand(object parameter)
