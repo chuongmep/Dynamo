@@ -9,7 +9,6 @@ namespace CoreNodeModelsWpf
     {
         public ElementSelectionControl()
         {
-            Resources.MergedDictionaries.Add(Dynamo.UI.SharedDictionaryManager.DynamoModernDictionary);
             InitializeComponent();
         }
     }

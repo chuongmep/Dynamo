@@ -88,7 +88,7 @@ namespace Dynamo.ViewModels
             {
                 if (unpinFromNodeCommand == null)
                 {
-                    unpinFromNodeCommand = new DelegateCommand(UnpinFromNode, CanUnpinFromNode);
+                    unpinFromNodeCommand = new DelegateCommand(UnpinFromNode);
                 }
                 return unpinFromNodeCommand;
             }

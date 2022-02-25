@@ -276,7 +276,7 @@ i = [Imperative]
 }
 ";
             ExecutionMirror mirror = thisTest.RunScriptSource(src);
-            var arr = new object[] {3, 0, true, false, false};
+            var arr = new object[] {3, 0, true, false, null};
             thisTest.Verify("i", arr);
         }
 
@@ -925,7 +925,7 @@ d = [Imperative]
 }
 ";
             ExecutionMirror mirror = thisTest.RunScriptSource(src);
-            thisTest.Verify("d", 1);
+            thisTest.Verify("d", 0);
 
         }
 

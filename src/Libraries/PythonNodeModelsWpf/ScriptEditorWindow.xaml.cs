@@ -33,13 +33,12 @@ namespace PythonNodeModelsWpf
         public PythonNode nodeModel { get; set; }
         private bool nodeWasModified = false;
         private string originalScript;
-
-        public string CachedEngine { get; set; }
+        public PythonEngineVersion CachedEngine { get; set; }
 
         /// <summary>
         /// Available Python engines.
         /// </summary>
-        public ObservableCollection<string> AvailableEngines
+        public ObservableCollection<PythonEngineVersion> AvailableEngines
         {
             get; private set;
         }
@@ -55,7 +54,7 @@ namespace PythonNodeModelsWpf
             this.dynamoViewModel = dynamoViewModel;
             this.nodeModel = nodeModel;
 
-            completionProvider = new SharedCompletionProvider(nodeModel.EngineName, dynamoViewModel.Model.PathManager.DynamoCoreDirectory);
+            completionProvider = new SharedCompletionProvider(nodeModel.Engine, dynamoViewModel.Model.PathManager.DynamoCoreDirectory);
             completionProvider.MessageLogged += dynamoViewModel.Model.Logger.Log;
             nodeModel.CodeMigrated += OnNodeModelCodeMigrated;
 
@@ -91,18 +90,18 @@ namespace PythonNodeModelsWpf
             editText.SyntaxHighlighting = HighlightingLoader.Load(
                 new XmlTextReader(elem), HighlightingManager.Instance);
 
-            AvailableEngines = new ObservableCollection<string>(PythonEngineManager.Instance.AvailableEngines.Select(x => x.Name));
+            AvailableEngines = new ObservableCollection<PythonEngineVersion>(PythonEngineManager.Instance.AvailableEngines.Select(x => x.Version));
             // Add the serialized Python Engine even if it is missing (so that the user does not see an empty slot)
-            if (!AvailableEngines.Contains(nodeModel.EngineName))
+            if (!AvailableEngines.Contains(nodeModel.Engine))
             {
-                AvailableEngines.Add(nodeModel.EngineName);
+                AvailableEngines.Add(nodeModel.Engine);
             }
 
             PythonEngineManager.Instance.AvailableEngines.CollectionChanged += UpdateAvailableEngines;
 
             editText.Text = propValue;
             originalScript = propValue;
-            CachedEngine = nodeModel.EngineName;
+            CachedEngine = nodeModel.Engine;
             EngineSelectorComboBox.SelectedItem = CachedEngine;
         }
         #region Autocomplete Event Handlers
@@ -113,9 +112,10 @@ namespace PythonNodeModelsWpf
             {
                 foreach (var item in e.NewItems)
                 {
-                    if (!AvailableEngines.Contains((string)item))
+                    PythonEngineVersion engine = (PythonEngineVersion)item;
+                    if (!AvailableEngines.Contains(engine))
                     {
-                        AvailableEngines.Add((string)item);
+                        AvailableEngines.Add(engine);
                     }
                 }
             }
@@ -182,17 +182,17 @@ namespace PythonNodeModelsWpf
         {
             originalScript = e.OldCode;
             editText.Text = e.NewCode;
-            if (CachedEngine != PythonEngineManager.CPython3EngineName)
+            if (CachedEngine != PythonEngineVersion.CPython3)
             {
-                CachedEngine = PythonEngineManager.CPython3EngineName;
-                EngineSelectorComboBox.SelectedItem = PythonEngineManager.CPython3EngineName;
+                CachedEngine = PythonEngineVersion.CPython3;
+                EngineSelectorComboBox.SelectedItem = CachedEngine;
             }
         }
 
         private void OnSaveClicked(object sender, RoutedEventArgs e)
         {
             originalScript = editText.Text;
-            nodeModel.EngineName = CachedEngine;
+            nodeModel.Engine = CachedEngine;
             UpdateScript(editText.Text);
             Analytics.TrackEvent(
                 Dynamo.Logging.Actions.Save,
@@ -204,7 +204,7 @@ namespace PythonNodeModelsWpf
             if (nodeWasModified)
             {
                 editText.Text = originalScript;
-                CachedEngine = nodeModel.EngineName;
+                CachedEngine = nodeModel.Engine;
                 EngineSelectorComboBox.SelectedItem = CachedEngine;
                 UpdateScript(originalScript);
             }
@@ -252,16 +252,16 @@ namespace PythonNodeModelsWpf
 
         private void OnEngineChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            if (CachedEngine != nodeModel.EngineName)
+            if (CachedEngine != nodeModel.Engine)
             {
                 nodeWasModified = true;
                 // Cover what switch did user make. Only track when the new engine option is different with the previous one.
                 Analytics.TrackEvent(
-                    Actions.Switch,
-                    Categories.PythonOperations,
-                    CachedEngine);
+                    Dynamo.Logging.Actions.Switch,
+                    Dynamo.Logging.Categories.PythonOperations,
+                    CachedEngine.ToString());
             }
-            editText.Options.ConvertTabsToSpaces = CachedEngine != PythonEngineManager.IronPython2EngineName;
+            editText.Options.ConvertTabsToSpaces = CachedEngine != PythonEngineVersion.IronPython2;
         }
 
         private void OnScriptEditorWindowClosed(object sender, EventArgs e)

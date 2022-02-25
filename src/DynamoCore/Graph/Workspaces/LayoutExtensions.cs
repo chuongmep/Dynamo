@@ -86,14 +86,6 @@ namespace Dynamo.Graph.Workspaces
             {
                 foreach (AnnotationModel group in workspace.Annotations)
                 {
-                    // We dont care about nested groups here,
-                    // as the parent group is treated as one big
-                    // node.
-                    if (workspace.Annotations.ContainsModel(group))
-                    {
-                        continue;
-                    }
-
                     // Treat a group as a graph layout node/vertex
                     combinedGraph.AddNode(group.GUID, group.Width, group.Height, group.X, group.Y,
                         group.IsSelected || DynamoSelection.Instance.Selection.Count == 0);
@@ -104,15 +96,15 @@ namespace Dynamo.Graph.Workspaces
             {
                 if (!isGroupLayout)
                 {
-                    AnnotationModel group = workspace.Annotations
-                        .Where(g => g.ContainsModel(node))
-                        .FirstOrDefault();
+                    AnnotationModel group = workspace.Annotations.Where(
+                        g => g.Nodes.Contains(node)).ToList().FirstOrDefault();
 
                     // Do not process nodes within groups
-                    if (group != null) continue;
-
-                    combinedGraph.AddNode(node.GUID, node.Width, node.Height, node.X, node.Y,
+                    if (group == null)
+                    {
+                        combinedGraph.AddNode(node.GUID, node.Width, node.Height, node.X, node.Y,
                             node.IsSelected || DynamoSelection.Instance.Selection.Count == 0);
+                    }
                 }
                 else
                 {
@@ -122,7 +114,7 @@ namespace Dynamo.Graph.Workspaces
                 }
             }
 
-            // Adding all connectorPins (belonging to all connectors) as graph.nodes to the combined graph.
+            ///Adding all connectorPins (belonging to all connectors) as graph.nodes to the combined graph.
             foreach (ConnectorModel edge in workspace.Connectors)
             {
                 foreach (var pin in edge.ConnectorPinModels)
@@ -141,22 +133,10 @@ namespace Dynamo.Graph.Workspaces
                 if (!isGroupLayout)
                 {
                     AnnotationModel startGroup = null, endGroup = null;
-
-                    // To get the start/end group we first make sure
-                    // that all nested groups are filterd out as we dont
-                    // care about them. We then check if the edge
-                    // start/end owner is in either the parent or child group
-                    var groupsFiltered = workspace.Annotations.Where(g => !workspace.Annotations.ContainsModel(g));
-
-                    startGroup = groupsFiltered
-                        .Where(g => g.ContainsModel(edge.Start.Owner) || 
-                                    g.Nodes.OfType<AnnotationModel>().SelectMany(x => x.Nodes).Contains(edge.Start.Owner))
-                        .FirstOrDefault();
-
-                    endGroup = groupsFiltered
-                        .Where(g => g.ContainsModel(edge.End.Owner) || 
-                                    g.Nodes.OfType<AnnotationModel>().SelectMany(x => x.Nodes).Contains(edge.End.Owner))
-                        .FirstOrDefault();
+                    startGroup = workspace.Annotations.Where(
+                        g => g.Nodes.Contains(edge.Start.Owner)).ToList().FirstOrDefault();
+                    endGroup = workspace.Annotations.Where(
+                        g => g.Nodes.Contains(edge.End.Owner)).ToList().FirstOrDefault();
 
                     // Treat a group as a node, but do not process edges within a group
                     if (startGroup == null || endGroup == null || startGroup != endGroup)
@@ -183,15 +163,13 @@ namespace Dynamo.Graph.Workspaces
                     // We add this note to the LinkedNotes on the 
                     // pinned node. 
                     var graphNode = combinedGraph.FindNode(note.PinnedNode.GUID);
-                    if (graphNode is null) continue;
                     var height = note.PinnedNode.Rect.Top - note.Rect.Top;
                     graphNode.LinkNote(note, note.Width, height);
                     continue;
                 }
 
-                AnnotationModel group = workspace.Annotations
-                    .Where(g => g.Nodes.Contains(note))
-                    .FirstOrDefault();
+                AnnotationModel group = workspace.Annotations.Where(
+                    g => g.Nodes.Contains(note)).ToList().FirstOrDefault();
 
                 GraphLayout.Node nd = null;
 
@@ -311,7 +289,6 @@ namespace Dynamo.Graph.Workspaces
             if (!isGroupLayout)
             {
                 // Add all selected items to the undo recorder
-                undoItems.AddRange(workspace.Annotations);
                 undoItems.AddRange(workspace.Connectors.SelectMany(conn => conn.ConnectorPinModels));
                 undoItems.AddRange(workspace.Nodes);
                 undoItems.AddRange(workspace.Notes);
@@ -498,13 +475,7 @@ namespace Dynamo.Graph.Workspaces
 
                     double deltaX = n.X - group.X;
                     double deltaY = n.Y - group.Y + graph.OffsetY;
-
-                    // We update the posistion of all nodes in the
-                    // parent group + all nodes in any potential
-                    // nested groups.
-                    foreach (var node in group.Nodes
-                        .OfType<NodeModel>()
-                        .Union(group.Nodes.OfType<AnnotationModel>().SelectMany(x => x.Nodes.OfType<NodeModel>())))
+                    foreach (var node in group.Nodes.OfType<NodeModel>())
                     {
                         node.X += deltaX;
                         node.Y += deltaY;
@@ -521,8 +492,6 @@ namespace Dynamo.Graph.Workspaces
                             note.ReportPosition();
                         }
                     }
-
-                    group.ReportPosition();
                 }
             }
 

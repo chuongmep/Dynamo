@@ -531,7 +531,7 @@
                                       IsExpanded="{Binding PreferencesTabs[VisualSettings].ExpanderActive, Converter={StaticResource ExpandersBindingConverter}, ConverterParameter=Styles}"
                                       Header="{x:Static p:Resources.PreferencesViewVisualSettingsGroupStyles}"
                                       Style="{StaticResource MenuExpanderStyle}"
-                                      Visibility="Visible">
+                                      Visibility="{Binding PreferencesDebugMode, Converter={StaticResource BooleanToVisibilityConverter}}">
                                 <ScrollViewer VerticalScrollBarVisibility="Auto" 
                                               Height="220">
                                     <Grid Margin="8,0,0,0">
@@ -573,11 +573,12 @@
                                                           Height="25"
                                                           Width="300"
                                                           Text="{Binding AddStyleControl.GroupName}"
-                                                          Tag="{x:Static p:Resources.PreferencesViewVisualSettingsGroupStyleInput}"/>
+                                                          Tag="Input"/>
                                                 <Grid Grid.Row="1"
                                                       Margin="10,0,10,0"
                                                       Background="{StaticResource PreferencesWindowVisualSettingsAddStyleBackground}">
                                                     <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"></ColumnDefinition>
                                                         <ColumnDefinition Width="*"></ColumnDefinition>
                                                         <ColumnDefinition Width="*"></ColumnDefinition>
                                                     </Grid.ColumnDefinitions>
@@ -595,26 +596,18 @@
                                                                 Content="{Binding Background, ElementName=buttonColorPicker, Converter={StaticResource BrushColorToStringConverter}}"
                                                                 Foreground="{StaticResource PreferencesWindowFontColor}"/>
                                                     </StackPanel>
-                                                    <Grid  Grid.Column="1" Margin="20,0,10,0">
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="*"></ColumnDefinition>
-                                                            <ColumnDefinition Width="*"></ColumnDefinition>
-                                                        </Grid.ColumnDefinitions>
-                                                        <Button x:Name="AddStyle_SaveButton" 
+                                                    <Button x:Name="AddStyle_SaveButton" 
                                                             Style="{StaticResource OutlinedButtonStyle}"
-                                                            Grid.Column="0"
-                                                            HorizontalAlignment="Right"
+                                                            Grid.Column="1"
                                                             Click="AddStyle_SaveButton_Click"
                                                             Width="50"
                                                             Height="30">Save</Button>
-                                                        <Button x:Name="AddStyle_CancelButton" 
+                                                    <Button x:Name="AddStyle_CancelButton" 
                                                             Style="{StaticResource OutlinedButtonStyle}"
-                                                            Grid.Column="1"
-                                                            HorizontalAlignment="Right"
+                                                            Grid.Column="2"
                                                             Click="AddStyle_CancelButton_Click"
                                                             Width="50"
                                                             Height="30">Cancel</Button>
-                                                    </Grid>
                                                 </Grid>
                                             </Grid>
                                         </Border>

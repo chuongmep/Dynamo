@@ -48,9 +48,9 @@ namespace Dynamo.LintingViewExtension
             this.linterManager.PropertyChanged += OnLinterManagerPropertyChange;
         }
 
-        private void OnViewExtensionOpenRequest(string extensionId)
+        private void OnViewExtensionOpenRequest(string extensionName)
         {
-            if (string.IsNullOrEmpty(extensionId) || !extensionId.Equals(UniqueId))
+            if (extensionName != Name)
             {
                 return;
             }

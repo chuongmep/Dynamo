@@ -1005,7 +1005,7 @@ namespace Dynamo.Controls
             // will not work. Instead, we have to check if the Owner Window (DynamoView) is deactivated or not.  
             if (Application.Current == null)
             {
-                this.Deactivated += (s, args) => { HidePopupWhenWindowDeactivated(null); };
+                this.Deactivated += (s, args) => { HidePopupWhenWindowDeactivated(); };
             }
             loaded = true;
         }
@@ -1014,11 +1014,11 @@ namespace Dynamo.Controls
         /// Close Popup when the Dynamo window is not in the foreground.
         /// </summary>
 
-        private void HidePopupWhenWindowDeactivated(object obj)
+        private void HidePopupWhenWindowDeactivated()
         {
             var workspace = this.ChildOfType<WorkspaceView>();
             if (workspace != null)
-                workspace.HideAllPopUp(obj);
+                workspace.HidePopUp();
         }
 
         private void TrackStartupAnalytics()
@@ -2368,7 +2368,7 @@ namespace Dynamo.Controls
             //if original sender was scroll bar(i.e Thumb) don't close the popup.
             if(!(e.OriginalSource is Thumb))
             {
-                HidePopupWhenWindowDeactivated(sender);
+                HidePopupWhenWindowDeactivated();
             }
         }
 

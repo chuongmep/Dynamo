@@ -160,7 +160,7 @@ result =
 }
 ";
             thisTest.VerifyRunScriptSource(code, errmsg);
-            Object v1 = false;
+            Object v1 = null;
             thisTest.Verify("result", v1, 0);
         }
 

@@ -613,8 +613,8 @@ namespace Dynamo.ViewModels
                     var element = sender as IInputElement;
                     mouseDownPos = e.GetPosition(element);
 
-                    // Check if there is any Dynamo Element (e.g. node, note, group) being clicked on. If so, 
-                    // then the state machine should initiate a drag operation if user keeps dragging the mouse .
+                    // We'll see if there is any node being clicked on. If so, 
+                    // then the state machine should initiate a drag operation.
                     if (null != GetSelectableFromPoint(mouseDownPos))
                     {
                         InitiateDragSequence();
@@ -838,9 +838,7 @@ namespace Dynamo.ViewModels
                     // the nested group and the parent group, as the mouse coursor will be inside
                     // both of there rects. In these cases we want to get group that is nested
                     // inside the parent group.
-                    var dropGroup = dropGroups
-                        .FirstOrDefault(x => !x.AnnotationModel.HasNestedGroups) ?? dropGroups.FirstOrDefault();
-
+                    var dropGroup = dropGroups.FirstOrDefault(x => !x.AnnotationModel.HasNestedGroups) ?? dropGroups.FirstOrDefault();
 
                     // If the dropGroup is null or any of the selected items is already in the dropGroup,
                     // we disable the drop border by setting NodeHoveringState to false
@@ -883,15 +881,6 @@ namespace Dynamo.ViewModels
                             .ToList()
                             .ForEach(x => x.NodeHoveringState = false);
 
-                        // If the dropGroup belongs to another group
-                        // we need to check if the parent group is collapsed
-                        // if it is we dont want to be able to add new
-                        // models to the drop group.
-                        var parentGroup = owningWorkspace.Annotations
-                            .Where(x => x.AnnotationModel.ContainsModel(dropGroup.AnnotationModel))
-                            .FirstOrDefault();
-                        if (parentGroup != null && !parentGroup.IsExpanded) return false;
-                        
                         dropGroup.NodeHoveringState = true;
                     }
 
@@ -1052,22 +1041,6 @@ namespace Dynamo.ViewModels
                 // The state machine must be in idle state.
                 if (this.currentState != State.None)
                     throw new InvalidOperationException();
-
-                // Before setting the drag state,
-                // shift + left click triggers removal of group node or note belongs to
-                if (Keyboard.IsKeyDown(Key.LeftShift) && !DynamoSelection.Instance.Selection.OfType<AnnotationModel>().Any())
-                {
-                    foreach (var model in DynamoSelection.Instance.Selection.OfType<ModelBase>())
-                    {
-                        var parentGroup = owningWorkspace.Annotations
-                            .Where(x => x.AnnotationModel.ContainsModel(model))
-                            .FirstOrDefault();
-                        if (parentGroup != null)
-                        {
-                            owningWorkspace.DynamoViewModel.UngroupModelCommand.Execute(null);
-                        }
-                    }
-                }
 
                 SetCurrentState(State.DragSetup);
             }

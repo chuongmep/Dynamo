@@ -6,7 +6,6 @@ using System.Linq;
 using DSCPython;
 using System.IO;
 using Dynamo;
-using Dynamo.PythonServices;
 
 namespace DSPythonTests
 {
@@ -158,11 +157,11 @@ print 'hello'
                 count = count + 1;
                 if (count == 1)
                 {
-                    Assert.AreEqual(DSCPython.EvaluationState.Success, state);
+                    Assert.AreEqual(EvaluationState.Success, state);
                 }
                 else if (count == 2)
                 {
-                    Assert.AreEqual(DSCPython.EvaluationState.Failed, state);
+                    Assert.AreEqual(EvaluationState.Failed, state);
                 }
             };
 
@@ -335,9 +334,9 @@ OUT = {modName}.value";
                 File.AppendAllLines(tempPath, new string[] { "value ='bye'" });
 
                 //mock raise event
-                CPythonEvaluator.RequestPythonResetHandler(PythonEngineManager.CPython3EngineName);
+                DSCPython.CPythonEvaluator.RequestPythonResetHandler(nameof(PythonNodeModels.PythonEngineVersion.CPython3));
 
-                output = CPythonEvaluator.EvaluatePythonScript(
+                output = DSCPython.CPythonEvaluator.EvaluatePythonScript(
                  script,
                  new ArrayList { "IN" },
                  new ArrayList { new ArrayList { " ", "  " } });

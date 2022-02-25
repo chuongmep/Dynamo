@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using Dynamo.Interfaces;
-using Dynamo.PythonServices;
 using NUnit.Framework;
 using PythonNodeModels;
 using static Dynamo.Models.DynamoModel;
@@ -18,7 +17,7 @@ namespace Dynamo.Tests
         protected override IStartConfiguration CreateStartConfiguration(IPreferences settings)
         {
             var config = (DefaultStartConfiguration)base.CreateStartConfiguration(settings);
-            config.DefaultPythonEngine = PythonEngineManager.CPython3EngineName;
+            config.DefaultPythonEngine = PythonEngineVersion.CPython3.ToString();
             return config;
         }
 
@@ -31,19 +30,19 @@ namespace Dynamo.Tests
             CurrentDynamoModel.ExecuteCommand(new CreateNodeCommand(node, 0, 0, true, false));
             node = CurrentDynamoModel.CurrentWorkspace.FirstNodeFromWorkspace<PythonNode>();
             AssertPreviewValue(node.AstIdentifierGuid, 0);
-            Assert.AreEqual(PythonEngineManager.CPython3EngineName, node.EngineName);
+            Assert.AreEqual(PythonEngineVersion.CPython3, node.Engine);
         }
 
         [Test]
         public void NewPythonNodeUsingUserDefaultEngine()
         {
-            CurrentDynamoModel.PreferenceSettings.DefaultPythonEngine = PythonEngineManager.IronPython2EngineName;
+            CurrentDynamoModel.PreferenceSettings.DefaultPythonEngine = PythonEngineVersion.IronPython2.ToString();
             var node = new PythonNode();
             node.GUID = Guid.NewGuid();
             CurrentDynamoModel.ExecuteCommand(new CreateNodeCommand(node, 0, 0, true, false));
             node = CurrentDynamoModel.CurrentWorkspace.FirstNodeFromWorkspace<PythonNode>();
             AssertPreviewValue(node.AstIdentifierGuid, 0);
-            Assert.AreEqual(PythonEngineManager.IronPython2EngineName, node.EngineName);
+            Assert.AreEqual(PythonEngineVersion.IronPython2, node.Engine);
         }
     }
 }

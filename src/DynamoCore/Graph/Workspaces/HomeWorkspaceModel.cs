@@ -750,10 +750,8 @@ namespace Dynamo.Graph.Workspaces
                 var node = workspace.Nodes.FirstOrDefault(n => n.GUID == guid);
                 if (node == null)
                     continue;
-                using (node.PropertyChangeManager.SetPropsToSuppress(nameof(NodeModel.ToolTipText), nameof(NodeModel.State)))
-                {
-                    node.Warning(message.Value); // Update node warning message.
-                }
+
+                node.Warning(message.Value); // Update node warning message.
             }
 
             // Notify listeners (optional) of completion.
@@ -769,8 +767,8 @@ namespace Dynamo.Graph.Workspaces
             // Dispatch the failure message display for execution on UI thread.
             // 
             EvaluationCompletedEventArgs e = task.Exception == null || IsTestMode
-                ? new EvaluationCompletedEventArgs(true,messages.Keys,null)
-                : new EvaluationCompletedEventArgs(true, messages.Keys, task.Exception);
+                ? new EvaluationCompletedEventArgs(true)
+                : new EvaluationCompletedEventArgs(true, task.Exception);
 
             EvaluationCount ++;
 
@@ -902,8 +900,6 @@ namespace Dynamo.Graph.Workspaces
                 OnSetNodeDeltaState(deltaComputeStateArgs);               
             }            
         }
-
-
        
         #endregion
 

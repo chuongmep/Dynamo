@@ -8,7 +8,6 @@ using Dynamo.Graph.Workspaces;
 using Dynamo.Interfaces;
 using Dynamo.PythonMigration.Controls;
 using Dynamo.PythonMigration.Differ;
-using Dynamo.PythonServices;
 using Python.Runtime;
 using PythonNodeModels;
 
@@ -86,7 +85,7 @@ namespace Dynamo.PythonMigration.MigrationAssistant
         {
             if (CurrentViewModel.DiffState == State.NoChanges)
             {
-                PythonNode.EngineName = PythonEngineManager.CPython3EngineName;
+                PythonNode.Engine = PythonEngineVersion.CPython3;
                 return;
             }
 

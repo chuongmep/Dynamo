@@ -32,17 +32,17 @@ namespace Dynamo.Tests
         /// <summary>
         ///    Returns a list of python engines from the PythonEngineVersion Enum. 
         /// </summary>
-        private IEnumerable<string> GetPythonEnginesList()
+        private IEnumerable<PythonEngineVersion> GetPythonEnginesList()
         {
-            return new List<string>() { PythonEngineManager.CPython3EngineName };
+            return new List<PythonEngineVersion>() { PythonEngineVersion.CPython3 };
         }
 
         /// <summary>
         ///    Updates Engine property for a single python node. 
         /// </summary>
-        private void UpdatePythonEngineAndRun(PythonNode pythonNode, string pythonEngineVersion)
+        private void UpdatePythonEngineAndRun(PythonNode pythonNode, PythonEngineVersion pythonEngineVersion)
         {
-            pythonNode.EngineName = pythonEngineVersion;
+            pythonNode.Engine = pythonEngineVersion;
             //to kick off a run node modified must be called
             pythonNode.OnNodeModified();
         }
@@ -50,11 +50,11 @@ namespace Dynamo.Tests
         /// <summary>
         ///    Updates Engine property for a list of python nodes. 
         /// </summary>
-        private void UpdateEngineAndRunForAllPythonNodes(List<PythonNode> list, string pythonEngineVersion)
+        private void UpdateEngineAndRunForAllPythonNodes(List<PythonNode> list, PythonEngineVersion pythonEngineVersion)
         {
             foreach (var pyNode in list)
             {
-                pyNode.EngineName = pythonEngineVersion;
+                pyNode.Engine = pythonEngineVersion;
                 pyNode.OnNodeModified();
             }
         }
@@ -100,7 +100,7 @@ namespace Dynamo.Tests
             var workspace = model.CurrentWorkspace;
             var nodeModel = workspace.NodeFromWorkspace("3bcad14e-d086-4278-9e08-ed2759ef92f3");
             var pynode = nodeModel as PythonNode;
-            Assert.AreEqual(pynode.EngineName, PythonEngineManager.IronPython2EngineName);
+            Assert.AreEqual(pynode.Engine, PythonEngineVersion.IronPython2);
 
             // workspace has no changes
             Assert.IsFalse(model.CurrentWorkspace.HasUnsavedChanges);
@@ -116,7 +116,7 @@ namespace Dynamo.Tests
             JObject dynObj = JObject.Parse(fileContents);
             var pythonTokens = dynObj["Nodes"].Where(t => t.Value<string>("NodeType") == "PythonScriptNode").Select(t => t);
             Assert.IsNotNull(pythonTokens);
-            Assert.IsTrue(pythonTokens.Any(t => t.Value<string>("Engine") == PythonEngineManager.IronPython2EngineName));
+            Assert.IsTrue(pythonTokens.Any(t => t.Value<string>("Engine") == PythonEngineVersion.IronPython2.ToString()));
         }
 
         [Test]
@@ -357,11 +357,11 @@ namespace Dynamo.Tests
 
                 var nodeValue = GetPreviewValue(pythonGUID);
 
-                if (pythonEngine == PythonEngineManager.IronPython2EngineName)
+                if (pythonEngine == PythonEngineVersion.IronPython2)
                 {
                     Assert.AreEqual("2.7.9", nodeValue);
                 }
-                else if (pythonEngine == PythonEngineManager.CPython3EngineName)
+                else if (pythonEngine == PythonEngineVersion.CPython3)
                 {
                     Assert.AreEqual("3.8.10", nodeValue);
                 }
@@ -431,17 +431,17 @@ namespace Dynamo.Tests
             var pynode1 = pythonNodes.ElementAt(0);
             var pynode2 = pythonNodes.ElementAt(1);
 
-            Assert.IsTrue(PythonEngineManager.Instance.AvailableEngines.Any(x => x.Name == PythonEngineManager.CPython3EngineName));
+            Assert.IsTrue(PythonEngineManager.Instance.AvailableEngines.Any(x => x.Version == PythonEngineVersion.CPython3));
 
             // Error when running IronPython2 script while IronPython2 engine is not installed
             AssertPreviewValue(pynode1.GUID.ToString("N"), null);
             AssertPreviewValue(pynode2.GUID.ToString("N"), null);
 
-            UpdatePythonEngineAndRun(pynode1, PythonEngineManager.CPython3EngineName);
+            UpdatePythonEngineAndRun(pynode1, PythonEngineVersion.CPython3);
             Assert.IsTrue(ViewModel.Model.CurrentWorkspace.HasUnsavedChanges);
             AssertPreviewValue(pynode1.GUID.ToString("N"), "3.8.10");
 
-            UpdatePythonEngineAndRun(pynode2, PythonEngineManager.CPython3EngineName);
+            UpdatePythonEngineAndRun(pynode2, PythonEngineVersion.CPython3);
             Assert.IsTrue(ViewModel.Model.CurrentWorkspace.HasUnsavedChanges);
             AssertPreviewValue(pynode2.GUID.ToString("N"), new List<string> { "3.8.10", "3.8.10" });
         }
@@ -593,7 +593,7 @@ namespace Dynamo.Tests
             // Only the default python paths would be present in 'sys.path' when a python node is evaluated.
             var nodeModel = ViewModel.Model.CurrentWorkspace.NodeFromWorkspace(secondPythonNodeGUID);
             var pynode = nodeModel as PythonNode;
-            UpdatePythonEngineAndRun(pynode, PythonEngineManager.CPython3EngineName);
+            UpdatePythonEngineAndRun(pynode, PythonEngineVersion.CPython3);
             sysPathList = GetFlattenedPreviewValues(secondPythonNodeGUID);
             Assert.AreEqual(sysPathList.Count(), 3);
             Assert.AreNotEqual(sysPathList.Last(), "C:\\Program Files\\dotnet");
@@ -619,7 +619,7 @@ namespace Dynamo.Tests
             File.WriteAllText(tempPath, "value ='Hello World!'\n");
 
             //we have to shutdown python before this test to make sure we're starting in a clean state.
-            this.ViewModel.Model.OnRequestPythonReset(PythonEngineManager.CPython3EngineName);
+            this.ViewModel.Model.OnRequestPythonReset(nameof(PythonEngineVersion.CPython3));
             try
             {
                 var script = $@"import sys
@@ -630,7 +630,7 @@ OUT = {modName}.value";
 
                 var pythonNode = new PythonNode();
                 ViewModel.CurrentSpace.AddAndRegisterNode(pythonNode);
-                pythonNode.EngineName = PythonEngineManager.CPython3EngineName;
+                pythonNode.Engine = PythonEngineVersion.CPython3;
                 UpdatePythonNodeContent(pythonNode, script);
                 RunCurrentModel();
                 AssertPreviewValue(pythonNode.GUID.ToString(), "Hello World!");
@@ -639,7 +639,7 @@ OUT = {modName}.value";
                 File.AppendAllLines(tempPath, new string[] { "value ='bye'" });
 
                 //user restarts manually, this will cause a dynamo and python engine reset
-                this.ViewModel.Model.OnRequestPythonReset(PythonEngineManager.CPython3EngineName);
+                this.ViewModel.Model.OnRequestPythonReset(nameof(PythonEngineVersion.CPython3));
 
                 RunCurrentModel();
                 AssertPreviewValue(pythonNode.GUID.ToString(), "bye");
@@ -676,7 +676,7 @@ OUT = {modName}.value";
 
                 var pythonNode = new PythonNode();
                 ViewModel.CurrentSpace.AddAndRegisterNode(pythonNode);
-                pythonNode.EngineName = PythonEngineManager.CPython3EngineName;
+                pythonNode.Engine = PythonEngineVersion.CPython3;
                 UpdatePythonNodeContent(pythonNode, script);
                 RunCurrentModel();
                 AssertPreviewValue(pythonNode.GUID.ToString(), "Hello World!");
@@ -697,7 +697,7 @@ OUT = {modName}.value";
                 UpdatePythonNodeContent(pythonNode, script);
 
                 //user restarts manually, this will cause a dynamo and python reset
-                this.ViewModel.Model.OnRequestPythonReset(PythonEngineManager.CPython3EngineName);
+                this.ViewModel.Model.OnRequestPythonReset(nameof(PythonEngineVersion.CPython3));
 
                 RunCurrentModel();
                 //this failure is currently expected.
@@ -735,7 +735,7 @@ OUT = {modName}.value";
         return self.data";
                 File.WriteAllText(modulePath, newContent);
 
-                this.ViewModel.Model.OnRequestPythonReset(PythonEngineManager.CPython3EngineName);
+                this.ViewModel.Model.OnRequestPythonReset(nameof(PythonEngineVersion.CPython3));
                 RunCurrentModel();
                 AssertPreviewValue(leafPythonNode, new string[] { "reloaded", "reloaded" });
                 //after a second run - the old instance shoud have been disposed
@@ -752,7 +752,7 @@ OUT = {modName}.value";
         [Test]
         public void Cpython_reloaded_class_instances_AUTO()
         {
-            this.ViewModel.Model.OnRequestPythonReset(PythonEngineManager.CPython3EngineName);
+            this.ViewModel.Model.OnRequestPythonReset(nameof(PythonEngineVersion.CPython3));
             RunModel(@"core\python\cpython_reloaded_class_instances.dyn");
             var leafPythonNode = "27af4862d5e7446babea7ff42f5bc80c";
             AssertPreviewValue(leafPythonNode, new string[] { "initial", "initial" });
@@ -773,7 +773,7 @@ OUT = {modName}.value";
                 File.WriteAllText(modulePath, newContent);
 
                 (ViewModel.CurrentSpace as HomeWorkspaceModel).RunSettings.RunType = RunType.Automatic;
-                this.ViewModel.Model.OnRequestPythonReset(PythonEngineManager.CPython3EngineName);
+                this.ViewModel.Model.OnRequestPythonReset(nameof(PythonEngineVersion.CPython3));
                 
                 AssertPreviewValue(leafPythonNode, new string[] { "reloaded", "reloaded" });
                 //after a second run - the old instance shoud have been disposed

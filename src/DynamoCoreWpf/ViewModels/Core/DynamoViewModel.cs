@@ -1286,7 +1286,7 @@ namespace Dynamo.ViewModels
                     if (modelb is NodeModel node)
                     {
                         var pinnedNotes = CurrentSpaceViewModel.Notes
-                            .Where(x => x.PinnedNode?.NodeModel == node)
+                            .Where(x => x.PinnedNode.NodeModel == node)
                             .Select(x => x.Model.GUID);
 
                         if (pinnedNotes.Any())
@@ -2065,8 +2065,7 @@ namespace Dynamo.ViewModels
             if (args.ClickedButtonId == (int)DynamoModel.ButtonId.Cancel ||
                 args.ClickedButtonId == 0)
             {
-                //Open Graph Status view extension
-                OnViewExtensionOpenRequest("3467481b-d20d-4918-a454-bf19fc5c25d7");
+                OnViewExtensionOpenRequest("Graph Status");
                 return false;
             }
 

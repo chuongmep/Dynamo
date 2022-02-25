@@ -5,7 +5,6 @@ using Dynamo;
 using Dynamo.Graph.Workspaces;
 using Dynamo.Interfaces;
 using Dynamo.Models;
-using Dynamo.PythonServices;
 using NUnit.Framework;
 using PythonNodeModels;
 
@@ -19,7 +18,6 @@ namespace DynamoPythonTests
         protected override void GetLibrariesToPreload(List<string> libraries)
         {
             libraries.Add("DSCPython.dll");
-            libraries.Add("DSCoreNodes.dll");
         }
 
         protected override DynamoModel.IStartConfiguration CreateStartConfiguration(IPreferences settings)
@@ -127,10 +125,10 @@ Python Script: considering contextlib
 Python Script: considering importlib.util";
             var pythonNode = new PythonNode();
             CurrentDynamoModel.CurrentWorkspace.AddAndRegisterNode(pythonNode);
-            pythonNode.EngineName = PythonEngineManager.CPython3EngineName;
+            pythonNode.Engine = PythonEngineVersion.CPython3;
           
             RunCurrentModel();
-            CurrentDynamoModel.OnRequestPythonReset(PythonEngineManager.CPython3EngineName);
+            CurrentDynamoModel.OnRequestPythonReset(nameof(PythonEngineVersion.CPython3));
             foreach(var line in expectedOutput.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries))
             {
                 StringAssert.Contains(line, CurrentDynamoModel.Logger.LogText);

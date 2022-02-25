@@ -17,8 +17,9 @@ namespace Dynamo.Python
         #endregion
 
         #region constructors
-        internal SharedCompletionProvider(string versionName, string dynamoCoreDir)
+        internal SharedCompletionProvider(PythonEngineVersion version ,string dynamoCoreDir)
         {
+            var versionName = Enum.GetName(typeof(PythonEngineVersion), version);
             var matchingCore = FindMatchingCodeCompletionCore(versionName, this.AsLogger()) ;
             if(matchingCore != null)
             {

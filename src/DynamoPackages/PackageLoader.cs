@@ -245,7 +245,7 @@ namespace Dynamo.PackageManager
             // Prevent loading packages that have been specifically marked as unloaded
             if (package.LoadState.State == PackageLoadState.StateTypes.Unloaded) return;
 
-            List<Assembly> loadedNodeLibs = new List<Assembly>();
+            List<Assembly> loadedAssemblies = new List<Assembly>();
             try
             {
                 // load node libraries
@@ -256,7 +256,7 @@ namespace Dynamo.PackageManager
                         try
                         {
                             OnRequestLoadNodeLibrary(assem.Assembly);
-                            loadedNodeLibs.Add(assem.Assembly);
+                            loadedAssemblies.Add(assem.Assembly);
                         }
                         catch (LibraryLoadFailedException ex)
                         {
@@ -287,10 +287,7 @@ namespace Dynamo.PackageManager
 
                 package.SetAsLoaded();
                 PackgeLoaded?.Invoke(package);
-                PackagesLoaded?.Invoke(loadedNodeLibs);
-
-                PythonServices.PythonEngineManager.Instance.
-                    LoadPythonEngine(package.LoadedAssemblies.Select(x => x.Assembly));
+                PackagesLoaded?.Invoke(loadedAssemblies);
             }
             catch (CustomNodePackageLoadException e)
             {

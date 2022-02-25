@@ -29,8 +29,17 @@ namespace DynamoPythonTests
         [Test]
         public void TestEngineSelectorInitialization()
         {
-            Assert.AreEqual(true, PythonEngineManager.Instance.AvailableEngines.Any(x => x.Name == PythonEngineManager.CPython3EngineName));
-            Assert.AreEqual(false, PythonEngineManager.Instance.AvailableEngines.Any(x => x.Name == PythonEngineManager.IronPython2EngineName));
+            PythonEngineManager.Instance.GetEvaluatorInfo(PythonEngineVersion.IronPython2, out string evaluatorClass, out string evaluationMethod);
+            Assert.AreEqual(true, PythonEngineManager.lazy.IsValueCreated);
+            Assert.AreEqual(PythonEngineManager.DummyEvaluatorClass, evaluatorClass);
+            Assert.AreEqual(PythonEngineManager.DummyEvaluatorMethod, evaluationMethod);
+
+            PythonEngineManager.Instance.GetEvaluatorInfo(PythonEngineVersion.CPython3, out evaluatorClass, out evaluationMethod);
+            Assert.AreEqual(evaluatorClass, PythonEngineManager.CPythonEvaluatorClass);
+            Assert.AreEqual(evaluationMethod, PythonEngineManager.CPythonEvaluationMethod);
+
+            Assert.AreEqual(true, PythonEngineManager.Instance.AvailableEngines.Any(x => x.Version == PythonEngineVersion.CPython3));
+            Assert.AreEqual(false, PythonEngineManager.Instance.AvailableEngines.Any(x => x.Version == PythonEngineVersion.IronPython2));
         }
 
         [Test]
@@ -41,7 +50,7 @@ namespace DynamoPythonTests
             CurrentDynamoModel.ExecuteCommand(new Dynamo.Models.DynamoModel.CreateNodeCommand(pyNode, 0, 0, false, false));
             Assert.AreEqual(1, CurrentDynamoModel.CurrentWorkspace.Nodes.Count());
 
-            pyNode.EngineName = PythonEngineManager.CPython3EngineName;
+            pyNode.Engine = PythonEngineVersion.CPython3;
             CurrentDynamoModel.AddToSelection(pyNode);
            
             CurrentDynamoModel.Copy();
@@ -50,26 +59,26 @@ namespace DynamoPythonTests
             CurrentDynamoModel.Paste();
             Assert.AreEqual(2, CurrentDynamoModel.CurrentWorkspace.Nodes.Count());
 
-            Assert.IsTrue(CurrentDynamoModel.CurrentWorkspace.Nodes.OfType<PythonNode>().All(x => x.EngineName == PythonEngineManager.CPython3EngineName));
+            Assert.IsTrue(CurrentDynamoModel.CurrentWorkspace.Nodes.OfType<PythonNode>().All(x => x.Engine == PythonEngineVersion.CPython3));
 
             CurrentDynamoModel.ExecuteCommand(new UndoRedoCommand(UndoRedoCommand.Operation.Undo));
             Assert.AreEqual(1, CurrentDynamoModel.CurrentWorkspace.Nodes.Count());
-            pyNode.EngineName = PythonEngineManager.IronPython2EngineName;
+            pyNode.Engine = PythonEngineVersion.IronPython2;
 
             CurrentDynamoModel.ExecuteCommand(
                  new UpdateModelValueCommand(
-                     Guid.Empty, pyNode.GUID, nameof(PythonNode.EngineName), PythonEngineManager.CPython3EngineName));
-            Assert.AreEqual(pyNode.EngineName, PythonEngineManager.CPython3EngineName);
+                     Guid.Empty, pyNode.GUID, nameof(PythonNode.Engine), PythonEngineVersion.CPython3.ToString()));
+            Assert.AreEqual(pyNode.Engine,PythonEngineVersion.CPython3);
 
             CurrentDynamoModel.ExecuteCommand(new UndoRedoCommand(UndoRedoCommand.Operation.Undo));
 
-            Assert.AreEqual(pyNode.EngineName, PythonEngineManager.IronPython2EngineName);
+            Assert.AreEqual(pyNode.Engine, PythonEngineVersion.IronPython2);
         }
 
         [Test]
         public void CPytonEngineManagerAPITest()
         {
-            var cPython3Eng = PythonEngineManager.Instance.AvailableEngines.FirstOrDefault(x => x.Name == PythonEngineManager.CPython3EngineName);
+            var cPython3Eng = PythonEngineManager.Instance.AvailableEngines.FirstOrDefault(x => x.Version == PythonEngineVersion.CPython3);
 
             Assert.IsNotNull(cPython3Eng);
 

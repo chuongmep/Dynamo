@@ -17,4 +17,3 @@ using System.Runtime.InteropServices;
 [assembly: InternalsVisibleTo("DocumentationBrowserViewExtension")]
 [assembly: InternalsVisibleTo("DynamoPackages")]
 [assembly: InternalsVisibleTo("ProtoScript")]
-[assembly: InternalsVisibleTo("ProtoCore")]

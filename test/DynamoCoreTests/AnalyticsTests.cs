@@ -123,6 +123,7 @@ namespace Dynamo.Tests
     {
         protected Mock<TrackerFactory> factoryMoq;
         protected Mock<IEventTracker> trackerMoq;
+        protected Mock<ILogger> loggerMoq;
 
         protected const string factoryName = "DynamoAnalyticsTests";
 
@@ -141,9 +142,11 @@ namespace Dynamo.Tests
 
         private IAnalyticsSession MockAnalyticsSession()
         {
+            loggerMoq = new Mock<ILogger>();
             var session = new Mock<IAnalyticsSession>();
             session.Setup(s => s.UserId).Returns("DynamoTestUser");
             session.Setup(s => s.SessionId).Returns("UniqueSession");
+            session.Setup(s => s.Logger).Returns(loggerMoq.Object);
             session.Setup(s => s.Start(It.IsAny<DynamoModel>())).Callback(SetupServices);
             return session.Object;
         }
@@ -176,6 +179,7 @@ namespace Dynamo.Tests
             VerifyEventTracking(Times.Exactly(1));
             //1 ApplicationLifecycle Start + 3 for exception + 6 other events
             trackerMoq.Verify(t => t.Track(It.IsAny<AnalyticsEvent>(), factoryMoq.Object), Times.AtLeast(10));
+            loggerMoq.Verify(l => l.Log(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 
         [Test]
@@ -194,6 +198,7 @@ namespace Dynamo.Tests
 
             //1 startup + 2 analytics optin status events
             trackerMoq.Verify(t => t.Track(It.IsAny<AnalyticsEvent>(), factoryMoq.Object), Times.Exactly(3));
+            loggerMoq.Verify(l=>l.Log(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
         }
 
         [Test]

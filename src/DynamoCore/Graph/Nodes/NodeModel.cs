@@ -68,6 +68,7 @@ namespace Dynamo.Graph.Nodes
 
         private readonly Dictionary<int, Tuple<int, NodeModel>> inputNodes;
         private readonly Dictionary<int, HashSet<Tuple<int, NodeModel>>> outputNodes;
+
         #endregion
 
         internal const double HeaderHeight = 46;
@@ -2545,15 +2546,7 @@ namespace Dynamo.Graph.Nodes
             };
 
             var task = new UpdateRenderPackageAsyncTask(scheduler);
-            try
-            {
-                if (!task.Initialize(initParams)) return false;
-            }
-            catch (ArgumentNullException e)
-            {
-                Log(e.ToString());
-                return false;
-            }
+            if (!task.Initialize(initParams)) return false;
 
             task.Completed += OnRenderPackageUpdateCompleted;
             scheduler.ScheduleForExecution(task);

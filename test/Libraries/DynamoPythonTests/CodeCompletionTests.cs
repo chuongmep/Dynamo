@@ -26,14 +26,14 @@ namespace DynamoPythonTests
         [Test]
         public void SharedCoreCanFindLoadedProviders()
         {
-            var provider = new SharedCompletionProvider(PythonEngineManager.CPython3EngineName, "");
+            var provider = new SharedCompletionProvider(PythonNodeModels.PythonEngineVersion.CPython3, "");
             Assert.IsNotNull(provider);
         }
 
         [Test]
         public void SharedCoreCanReturnCLRCompletionData()
         {
-            var provider = new SharedCompletionProvider(PythonEngineManager.CPython3EngineName, "");
+            var provider = new SharedCompletionProvider(PythonNodeModels.PythonEngineVersion.CPython3, "");
             Assert.IsNotNull(provider);
             var str = "\nimport System.Collections\nSystem.Collections.";
 
