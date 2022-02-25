@@ -12,6 +12,7 @@ using System.Windows.Input;
 using Dynamo.Core;
 using Dynamo.Graph.Nodes.CustomNodes;
 using Dynamo.Graph.Workspaces;
+using Dynamo.Logging;
 using Dynamo.Models;
 using Dynamo.PackageManager;
 using Dynamo.PackageManager.UI;
@@ -422,10 +423,11 @@ namespace Dynamo.ViewModels
 
                 if (pkg != null)
                 {
-                    var m = MessageBox.Show(String.Format(Resources.MessageSubmitSameNamePackage, 
-                            DynamoViewModel.BrandingResourceProvider.ProductName,pkg.Name),
-                            Resources.PackageWarningMessageBoxTitle, 
-                            MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    var m = Dynamo.Wpf.Utilities.MessageBoxService.Show(Owner, 
+                        String.Format(Resources.MessageSubmitSameNamePackage,
+                        DynamoViewModel.BrandingResourceProvider.ProductName, pkg.Name),
+                        Resources.PackageWarningMessageBoxTitle,
+                        MessageBoxButton.YesNo, MessageBoxImage.Question);
 
                     if (m == MessageBoxResult.Yes)
                     {
@@ -505,7 +507,7 @@ namespace Dynamo.ViewModels
         /// </summary>
         /// <param name="package">package version being downloaded</param>
         /// <param name="duplicatePackage">local package found to be duplicate of one being downloaded</param>
-        /// <param name="conflicts">List of packages that are in conflict with the dependencies of the package version to be downloaded (does not include the main package)</param>
+        /// <param name="dependencyConflicts">List of packages that are in conflict with the dependencies of the package version to be downloaded (does not include the main package)</param>
         /// <returns>True if the User opted to continue with the download operation. False otherwise</returns>
         private bool WarnAboutDuplicatePackageConflicts(PackageVersion package, 
                                                         Package duplicatePackage, 
@@ -532,6 +534,7 @@ namespace Dynamo.ViewModels
                         MessageBoxService.Show(Owner, message, Resources.CannotDownloadPackageMessageBoxTitle,
                             MessageBoxButton.OK, MessageBoxImage.Exclamation);
                     }
+                    Analytics.TrackEvent(Actions.BuiltInPackageConflict, Categories.PackageManagerOperations, packageToDownload);
                     return false;// All conflicts with built-in packages must be first resolved manually before continuing to download.
                 }
 
@@ -611,8 +614,8 @@ namespace Dynamo.ViewModels
                 // Conflicts with builtin packages
                 var message = string.Format(Resources.MessagePackageDepsInBuiltinPackages, packageToDownload,
                         JoinPackageNames(builtinPackages));
-
-                var dialogResult = MessageBoxService.Show(message,
+                Analytics.TrackEvent(Actions.BuiltInPackageConflict, Categories.PackageManagerOperations, packageToDownload);
+                var dialogResult = MessageBoxService.Show(Owner, message,
                     Resources.BuiltInPackageConflictMessageBoxTitle,
                     MessageBoxButton.OKCancel, MessageBoxImage.Exclamation);
 

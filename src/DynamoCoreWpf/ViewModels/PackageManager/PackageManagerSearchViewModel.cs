@@ -9,7 +9,6 @@ using System.Windows;
 using System.Windows.Input;
 using Dynamo.Interfaces;
 using Dynamo.Logging;
-using Dynamo.PackageManager.UI;
 using Dynamo.PackageManager.ViewModels;
 using Dynamo.Search;
 using Dynamo.ViewModels;
@@ -134,7 +133,6 @@ namespace Dynamo.PackageManager
         }
 
         #region Properties & Fields
-
 
         // The results of the last synchronization with the package manager server
         public List<PackageManagerSearchElement> LastSync { get; set; }
@@ -868,11 +866,10 @@ namespace Dynamo.PackageManager
             // No need to filter by host if nothing selected
             if (SelectedHosts.Count == 0) return list;
             IEnumerable<PackageManagerSearchElementViewModel> filteredList = null;
-            foreach (var host in SelectedHosts)
-            {
-                filteredList = (filteredList ?? Enumerable.Empty<PackageManagerSearchElementViewModel>()).Union(
-                    list.Where(x => x.Model.Hosts != null && x.Model.Hosts.Contains(host)) ?? Enumerable.Empty<PackageManagerSearchElementViewModel>());
-            }
+
+            filteredList = filteredList ??
+                           list.Where(x => x.Model.Hosts != null && SelectedHosts.Intersect(x.Model.Hosts).Count() == SelectedHosts.Count()) ?? Enumerable.Empty<PackageManagerSearchElementViewModel>();
+
             return filteredList;
         }
 
