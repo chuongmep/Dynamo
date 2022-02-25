@@ -17,6 +17,7 @@ using Dynamo.ViewModels;
 using Dynamo.Wpf.UI;
 using Dynamo.Wpf.Utilities;
 using InfoBubbleViewModel = Dynamo.ViewModels.InfoBubbleViewModel;
+using MessageBox = System.Windows.Forms.MessageBox;
 
 namespace Dynamo.Controls
 {
@@ -696,7 +697,7 @@ namespace Dynamo.Controls
             Canvas.SetTop(mainGrid, ViewModel.TargetTopLeft.Y);
             Canvas.SetLeft(mainGrid, ViewModel.TargetTopLeft.X);
         }
-        
+
         #endregion
 
         #region Resize
@@ -922,10 +923,10 @@ namespace Dynamo.Controls
         private void ShowAllErrorsButton_Click(object sender, RoutedEventArgs e)
         {
             // If we're already expanded, this button collapses the border
-            if (ViewModel.NodeErrorsVisibilityState == 
+            if (ViewModel.NodeErrorsVisibilityState ==
                 InfoBubbleViewModel.NodeMessageVisibility.ShowAllMessages)
             {
-                ViewModel.NodeErrorsVisibilityState = 
+                ViewModel.NodeErrorsVisibilityState =
                     InfoBubbleViewModel.NodeMessageVisibility.CollapseMessages;
                 ViewModel.NodeErrorsShowLessMessageVisible = false;
                 return;
@@ -957,7 +958,7 @@ namespace Dynamo.Controls
             if (ViewModel.NodeInfoVisibilityState ==
                 InfoBubbleViewModel.NodeMessageVisibility.ShowAllMessages)
             {
-                ViewModel.NodeInfoVisibilityState = 
+                ViewModel.NodeInfoVisibilityState =
                     InfoBubbleViewModel.NodeMessageVisibility.CollapseMessages;
                 ViewModel.NodeInfoShowLessMessageVisible = false;
                 return;
@@ -991,7 +992,7 @@ namespace Dynamo.Controls
         private void ClearDismissedMessagesOfStyle(InfoBubbleViewModel.Style style)
         {
             ObservableCollection<InfoBubbleDataPacket> messagesToDismiss = GetDismissedMessagesOfStyle(style);
-            
+
             for (int i = messagesToDismiss.Count - 1; i >= 0; i--)
             {
                 ViewModel.DismissedMessages.RemoveAt(i);
@@ -1089,7 +1090,7 @@ namespace Dynamo.Controls
             HorizontalAlignment left = HorizontalAlignment.Left;
 
             bool isIcon;
-            
+
             switch (border.Name)
             {
                 case "InfoBorder":
@@ -1111,6 +1112,44 @@ namespace Dynamo.Controls
             border.HorizontalAlignment = isIcon ? stretch : left;
             ViewModel.NodeWarningsShowLessMessageVisible = false;
             e.Handled = true;
+        }
+
+        private void CopyWarningContentListBox_OnKeyDown(object sender, KeyEventArgs e)
+        {
+            CopyInfoListBox(e, WarningsListBox);
+        }
+        private void CopyErrorContentListBox_OnKeyDown(object sender, KeyEventArgs e)
+        {
+            CopyInfoListBox(e, ErrorsListBox);
+        }
+
+        private void CopyInfoContentListBox_OnKeyDown(object sender, KeyEventArgs e)
+        {
+            CopyInfoListBox(e, InfoListBox);
+        }
+
+        void CopyInfoListBox(KeyEventArgs e, ListBox listBox)
+        {
+            if (e.Key == Key.C && (Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) == System.Windows.Input.ModifierKeys.Control)
+            {
+               CopyInfoListBox(listBox);
+            }
+        }
+
+        void CopyInfoListBox(ListBox listBox)
+        {
+            System.Text.StringBuilder copyBuffer = new System.Text.StringBuilder();
+            foreach (InfoBubbleDataPacket item in listBox.SelectedItems)
+                copyBuffer.AppendLine(item.Message);
+            if (copyBuffer.Length > 0)
+                Clipboard.SetText(copyBuffer.ToString());
+        }
+
+        private void CopyWarningContentListBoxClick(object sender, RoutedEventArgs e)
+        {
+            CopyInfoListBox(WarningsListBox);
+            //TODO
+
         }
     }
 }
