@@ -20,13 +20,13 @@ namespace CoreNodeModels
     [NodeSearchTags("ColorRangeSearchTags", typeof(Resources))]
 
     [InPortNames("colors", "indices", "value")]
-    [InPortTypes("Color[]", "double[]", "double")]
+    [InPortTypes("DSCore.Color[]", "double[]", "double")]
     [InPortDescriptions(typeof(Resources),
         "ColorRangePortDataColorsToolTip",
         "ColorRangePortDataIndicesToolTip",
         "ColorRangePortDataValueToolTip")]
     [OutPortNames("color")]
-    [OutPortTypes("Color")]
+    [OutPortTypes("DSCore.Color")]
     [OutPortDescriptions(typeof(Resources),
         "ColorRangePortDataResultToolTip")]
     [AlsoKnownAs("DSCoreNodesUI.ColorRange")]
@@ -86,7 +86,7 @@ namespace CoreNodeModels
 
             // If either of the first two inputs does not have a connector
             // then build a default color range.
-            if (!InPorts[1].IsConnected || !InPorts[1].IsConnected)
+            if (!InPorts[0].IsConnected || !InPorts[1].IsConnected)
             {
                 buildColorRangeNode =
                     AstFactory.BuildFunctionCall(

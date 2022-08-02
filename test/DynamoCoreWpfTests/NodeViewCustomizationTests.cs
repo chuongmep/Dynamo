@@ -48,6 +48,9 @@ namespace DynamoCoreWpfTests
         [Test, Category("DisplayHardwareDependent")]
         public void Watch3DHasViewer()
         {
+            var path = Environment.GetEnvironmentVariable("Path", EnvironmentVariableTarget.Process) + ";" + Model.PathManager.DynamoCoreDirectory;
+            Environment.SetEnvironmentVariable("Path", path, EnvironmentVariableTarget.Process);
+
             var renderingTier = (System.Windows.Media.RenderCapability.Tier >> 16);
             if (renderingTier < 2)
             {
@@ -55,7 +58,6 @@ namespace DynamoCoreWpfTests
             }
 
             Open(@"UI\CoreUINodes.dyn");
-
             var nodeView = NodeViewWithGuid("6869c998-b819-4686-8849-6f36162c4182"); // NodeViewOf<Watch3D>();
             var watchView = nodeView.ChildrenOfType<Watch3DView>().FirstOrDefault();
             Assert.NotNull(watchView);
@@ -67,7 +69,7 @@ namespace DynamoCoreWpfTests
             Open(@"UI\CoreUINodes.dyn");
 
             var nodeView = NodeViewWithGuid("3d436f17-cc3d-4b84-afd9-fc71ff538b3b"); // NodeViewOf<StringInput>();
-            var element = nodeView.ChildrenOfType<TextBox>().First();
+            var element = nodeView.ChildrenOfType<TextBox>().First(x => string.IsNullOrEmpty(x.Name));
             Assert.AreEqual("\"ok\"", element.Text);
         }
 
@@ -310,9 +312,13 @@ namespace DynamoCoreWpfTests
 
             var imgs = nodeView.ChildrenOfType<Image>();
 
-            Assert.AreEqual(1, imgs.Count());
+            // Starting from Dynamo 2.13, node view now comes with 
+            // images like node icon, lacing image etc
+            // As of March 2022, we have 7 images per NodeView
+            // Images are named for ease of use
+            Assert.AreEqual(7, imgs.Count());
 
-            var img = imgs.First();
+            var img = imgs.First(x => x.Name == "DotsImage");
 
             Assert.Greater(img.ActualWidth, 10);
             Assert.Greater(img.ActualHeight, 10);
@@ -491,6 +497,19 @@ namespace DynamoCoreWpfTests
                 if (item != null && item.Header.ToString() == Dynamo.Wpf.Properties.Resources.ContextMenuEditCustomNodeProperty)
                     Assert.IsFalse(item.IsEnabled);
             }
+        }
+
+        [Test]
+        public void INodeViewCustomizationCheckUsingReflectionIsCorrect()
+        {
+            var dyncorewpfAssem = AppDomain.CurrentDomain.GetAssemblies().Where(x => x.GetName().Name == "DynamoCoreWpf").FirstOrDefault();
+            var dyncoreAssem = AppDomain.CurrentDomain.GetAssemblies().Where(x => x.GetName().Name == "DynamoCore").FirstOrDefault();
+            Assert.IsNotNull(dyncorewpfAssem);
+            Assert.IsNotNull(dyncoreAssem);
+            //this assembly contains some builtin nodeviewcustomizations and this methd should return true.
+            Assert.IsTrue(NodeModelAssemblyLoader.ContainsNodeViewCustomizationType(dyncorewpfAssem));
+            //this assembly contains some builtin nodeviewcustomizations and this methd should return true.
+            Assert.IsFalse(NodeModelAssemblyLoader.ContainsNodeViewCustomizationType(dyncoreAssem));
         }
     }
 

@@ -117,6 +117,9 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="BitmapOverflowError" xml:space="preserve">
+    <value>The supplied color data is too large to fit in the image bounds.</value>
+  </data>
   <data name="EnumDateOfWeekFriday" xml:space="preserve">
     <value>Friday</value>
   </data>
@@ -156,14 +159,23 @@
   <data name="FromObjectObsolete" xml:space="preserve">
     <value>This node is obsolete, please use "String from Object"</value>
   </data>
+  <data name="IntegerOverflow" xml:space="preserve">
+    <value>The operation resulted in an integer overflow. Its result may be unexpected.</value>
+  </data>
+  <data name="InvalidDestinationPathErrorMessage" xml:space="preserve">
+    <value>Invalid destination file path used as copy path.</value>
+  </data>
   <data name="InvalidKeysErrorMessage" xml:space="preserve">
     <value>One or more input types are not matching. Lists as keys are not supported.</value>
   </data>
   <data name="InvalidKeysLenghtErrorMessage" xml:space="preserve">
-    <value>Number of items does not match the number of keys.</value>
+    <value>Number of items does not match the number of keys. href=InvalidKeysLenghtErrorMessage.html</value>
   </data>
   <data name="LoadImageFromPathObsolete" xml:space="preserve">
     <value>Use File.FromPath -&gt;  Image.ReadFromFile nodes instead</value>
+  </data>
+  <data name="MissingPythonEngine" xml:space="preserve">
+    <value>The selected Python engine could not be found</value>
   </data>
   <data name="ObjectArgumentExceptionMessage" xml:space="preserve">
     <value>Object cannot be null, please provide appropriate value.</value>

@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using Dynamo.Graph;
@@ -15,6 +16,12 @@ namespace Dynamo.UI.Prompts
     /// </summary>
     public partial class EditWindow
     {
+        /// <summary>
+        /// Event analyses when a key has been typed on the edit window, 
+        /// used to alter the behaviour of certain keys, 
+        /// for example for adding bullet point support.         
+        /// </summary>
+        internal event EventHandler<KeyEventArgs> EditTextBoxPreviewKeyDown;
         private readonly DynamoViewModel dynamoViewModel;
         private bool CommitChangesOnReturn { get; set; }
 
@@ -40,7 +47,59 @@ namespace Dynamo.UI.Prompts
                         expr.UpdateSource();
                 };
             }
+            this.editText.PreviewKeyDown += EditText_PreviewKeyDown;
+            this.Closed += EditWindow_Closed;
         }
+
+
+        private void CloseButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            Close();
+        }
+
+        private void MinimizeButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            this.WindowState = WindowState.Minimized;
+        }
+
+        private void MaximizeButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            if ((sender as Button).Name.Equals("MaximizeButton"))
+            {
+                this.WindowState = WindowState.Maximized;
+                ToggleButtons(true);
+            }
+            else
+            {
+                this.WindowState = WindowState.Normal;
+                ToggleButtons(false);
+            }
+        }
+
+
+        /// <summary>
+        /// Toggles between the Maximize and Normalize buttons on the window
+        /// </summary>
+        /// <param name="toggle"></param>
+        private void ToggleButtons(bool toggle)
+        {
+            if (toggle)
+            {
+                this.MaximizeButton.Visibility = Visibility.Collapsed;
+                this.NormalizeButton.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                this.MaximizeButton.Visibility = Visibility.Visible;
+                this.NormalizeButton.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void EditText_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            EditTextBoxPreviewKeyDown?.Invoke(sender, e);
+        }
+
         private void OnEditWindowPreviewKeyDown(object sender, KeyEventArgs e)
         {
            if(CommitChangesOnReturn && (e.Key == Key.Return || e.Key == Key.Enter))
@@ -108,6 +167,29 @@ namespace Dynamo.UI.Prompts
             else if (null != noteModel)
                 return noteModel;
             return annotationModel;
+        }
+
+        /// <summary>
+        /// Lets the user drag this window around with their left mouse button.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void UIElement_OnMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton != MouseButton.Left) return;
+            DragMove();
+        }
+
+        private void EditWindow_Closed(object sender, EventArgs e)
+        {
+            this.editText.PreviewKeyDown -= EditText_PreviewKeyDown;
+            this.Closed -= EditWindow_Closed;
+        }
+
+        // ESC Button pressed triggers Window close        
+        private void OnCloseExecuted(object sender, ExecutedRoutedEventArgs e)
+        {
+            this.Close();
         }
     }
 }

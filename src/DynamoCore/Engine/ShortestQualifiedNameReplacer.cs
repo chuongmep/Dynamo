@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using System.Text;
 using ProtoCore;
 using ProtoCore.AST.AssociativeAST;
 using ProtoCore.DSASM;
@@ -10,12 +11,19 @@ using ProtoCore.Utils;
 namespace Dynamo.Engine
 {
     /// <summary>
-    /// Replace a fully qualified function call with short name. 
+    /// Replaces a fully qualified class name with a short name.
+    /// Ensures that fully qualified namespaces of classes with the same name are
+    /// automatically shortened to partial namespaces so that they can still be resolved uniquely.
+    /// E.g., given {"A.B.C.D.E", "X.Y.A.B.E.C.E", "X.Y.A.C.B.E"}, all with the same class E,
+    /// their shortest unique names would be: {"D.E", "E.E", "C.B.E"}.
+    /// 
+    /// Also replaces DesignScript.BuiltIn.Get.ValueAtIndex(exp1, exp2) calls to exp1[exp2] expressions.
     /// </summary>
     internal class ShortestQualifiedNameReplacer : AstReplacer
     {
         private readonly ClassTable classTable;
         private readonly ElementResolver resolver;
+        private delegate void SetArrayDimensionsDelegate(ref ArrayNameNode indxExp, AssociativeNode indx);
 
         public ShortestQualifiedNameReplacer(ClassTable classTable, ElementResolver resolver)
         {
@@ -64,11 +72,83 @@ namespace Dynamo.Engine
             return node;
         }
 
+        /// <summary>
+        /// If node is a DesignScript.BuiltIn.Get.ValueAtIndex(exp1, exp2) function call node.
+        /// it is transformed into a node with indexing operator e.g. exp1[exp2].
+        /// </summary>
+        /// <param name="node">input node</param>
+        /// <param name="indexExp">output node</param>
+        /// <returns>true if input expression is of the form DesignScript.BuiltIn.Get.ValueAtIndex(exp1, exp2), false otherwise</returns>
+        private bool TryBuildIndexingExpression(IdentifierListNode node, out ArrayNameNode indexExp)
+        {
+            // If indxExp already has a rank >= 1, we need to append another [] to it with indx.
+            SetArrayDimensionsDelegate setArrayDimensions = (ref ArrayNameNode indxExp, AssociativeNode indx) =>
+            {
+                if (indxExp.ArrayDimensions != null)
+                {
+                    if (indxExp is IdentifierListNode iln)
+                    {
+                        if (iln.RightNode is ArrayNameNode arr)
+                        {
+                            arr.ArrayDimensions = indxExp.ArrayDimensions;
+                        }
+                    }
+                    else indxExp = new IdentifierNode(indxExp.ToString());
+                }
+                indxExp.ArrayDimensions = new ArrayNode(indx, null);
+            };
+
+            indexExp = null;
+            if(node.RightNode is FunctionCallNode fcn)
+            {
+                if(fcn.Function.Name == ProtoCore.AST.Node.BuiltinValueAtIndexMethodName)
+                {
+                    if(node.LeftNode.ToString() == ProtoCore.AST.Node.BuiltinGetValueAtIndexTypeName)
+                    {
+                        var exp1 = fcn.FormalArguments[0];
+                        var exp2 = fcn.FormalArguments[1];
+                        
+                        // exp1 = expression to be indexed.
+                        // Only expressions of ArrayNameNode type can be indexed.
+                        if (exp1 is ArrayNameNode ann)
+                        {
+                            if (exp1 is IdentifierListNode iln1)
+                            {
+                                if (!TryBuildIndexingExpression(iln1, out indexExp))
+                                {
+                                    indexExp = iln1;
+                                }
+                            }
+                            else indexExp = ann;
+
+                            // exp2 = expression that evaluates to an index.
+                            if (exp2 is IdentifierListNode iln2)
+                            {
+                                if (TryBuildIndexingExpression(iln2, out ArrayNameNode index))
+                                {
+                                    setArrayDimensions(ref indexExp, index);
+                                    return true;
+                                }
+                            }
+                            setArrayDimensions(ref indexExp, exp2);
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
 
         public override AssociativeNode VisitIdentifierListNode(IdentifierListNode node)
         {
             if (node == null)
                 return null;
+
+            if (TryBuildIndexingExpression(node, out ArrayNameNode indexExp))
+            {
+                if (indexExp is IdentifierListNode iln) node = iln;
+                else return indexExp;
+            }
 
             // First pass attempt to resolve the node class name 
             // and shorten it before traversing it deeper
@@ -88,9 +168,43 @@ namespace Dynamo.Engine
             {
                 LeftNode = newLeftNode,
                 RightNode = rightNode,
+                Optr = Operator.dot,
+                ArrayDimensions = node.ArrayDimensions
+            };
+            return node;
+        }
+
+        public override AssociativeNode VisitIdentifierNode(IdentifierNode node)
+        {
+            var name = node.ToString();
+            string[] strIdentList = name.Split('.');
+
+            // return IdentifierNode if identifier string is not separated by '.'
+            if (strIdentList.Length == 1)
+            {
+                return node;
+            }
+
+            // create IdentifierListNode from string such that
+            // RightNode is IdentifierNode representing classname
+            // and LeftNode is IdentifierNode representing one or more namespaces.
+            var rightNode = new IdentifierNode(strIdentList.Last());
+            StringBuilder bld = new StringBuilder();
+            for (int i = 0; i < strIdentList.Length - 1; i++)
+            {
+                if (!string.IsNullOrEmpty(bld.ToString()))
+                    bld.Append(".");
+                bld.Append(strIdentList[i]);
+            }
+            var leftNode = new IdentifierNode(bld.ToString());
+
+            var identListNode = new IdentifierListNode
+            {
+                LeftNode = leftNode,
+                RightNode = rightNode,
                 Optr = Operator.dot
             };
-            return leftNode != newLeftNode ? node : RewriteNodeWithShortName(node);
+            return identListNode.Accept(this);
         }
 
         private bool TryShortenClassName(IdentifierListNode node, out AssociativeNode shortNameNode)
@@ -108,84 +222,79 @@ namespace Dynamo.Engine
             if (matchingClasses.Length == 0)
                 return false;
 
-            string className = qualifiedName.Split('.').Last();
-
-            var symbol = new ProtoCore.Namespace.Symbol(qualifiedName);
-            if (!symbol.Matches(node.ToString()))
+            if(qualifiedName != node.ToString())
                 return false;
+
+            string className = qualifiedName.Split('.').Last();
 
             shortNameNode = CreateNodeFromShortName(className, qualifiedName);
             return shortNameNode != null;
         }
 
-        private IdentifierListNode RewriteNodeWithShortName(IdentifierListNode node)
-        {
-            // Get class name from AST
-            string qualifiedName = CoreUtils.GetIdentifierExceptMethodName(node);
-
-            // if it is a global method
-            if (string.IsNullOrEmpty(qualifiedName))
-                return node;
-
-            // Make sure qualifiedName is not a property
-            var lNode = node.LeftNode;
-            var matchingClasses = classTable.GetAllMatchingClasses(qualifiedName);
-            while (matchingClasses.Length == 0 && lNode is IdentifierListNode)
-            {
-                qualifiedName = lNode.ToString();
-                matchingClasses = classTable.GetAllMatchingClasses(qualifiedName);
-                lNode = ((IdentifierListNode)lNode).LeftNode;
-            }
-            qualifiedName = lNode.ToString();
-            string className = qualifiedName.Split('.').Last();
-
-            var newIdentList = CreateNodeFromShortName(className, qualifiedName);
-            if (newIdentList == null)
-                return node;
-
-            // Replace class name in input node with short name (newIdentList)
-            node = new IdentifierListNode
-            {
-                LeftNode = newIdentList,
-                RightNode = node.RightNode,
-                Optr = Operator.dot
-            };
-            return node;
-        }
-
         private AssociativeNode CreateNodeFromShortName(string className, string qualifiedName)
         {
             // Get the list of conflicting namespaces that contain the same class name
-            var matchingClasses = CoreUtils.GetResolvedClassName(classTable, AstFactory.BuildIdentifier(className));
-            if (matchingClasses.Length == 0)
+            var matchingClasses = classTable.ClassNodes.Where(
+                x => x.Name.Split('.').Last().Equals(className)).ToList();
+
+            if (matchingClasses.Count == 0)
                 return null;
 
-            string shortName;
-            // if there is no class conflict simply use the class name as the shortest name
-            if (matchingClasses.Length == 1)
+            if (matchingClasses.Count == 1)
             {
-                shortName = className;
+                // If there is no class conflict simply use the class name as the shortest name.
+                return CoreUtils.CreateNodeFromString(className);
             }
-            else
+
+            var shortName = resolver?.LookupShortName(qualifiedName);
+            if (!string.IsNullOrEmpty(shortName))
             {
-                shortName = resolver != null ? resolver.LookupShortName(qualifiedName) : null;
+                return CoreUtils.CreateNodeFromString(shortName);
+            }
 
-                if (string.IsNullOrEmpty(shortName))
+            // Use the namespace list to derive the list of shortest unique names
+            var symbolList =
+                matchingClasses.Select(matchingClass => new Symbol(matchingClass.Name));
+            var shortNames = Symbol.GetShortestUniqueNames(symbolList);
+
+            // remove hidden class if any from shortNames before proceeding
+            var hiddenClassNodes = matchingClasses.
+                Where(x => x.ClassAttributes?.HiddenInLibrary ?? false).ToList();
+            if(hiddenClassNodes.Any())
+            {
+                foreach (var hiddenClassNode in hiddenClassNodes)
                 {
-                    // Use the namespace list as input to derive the list of shortest unique names
-                    var symbolList =
-                        matchingClasses.Select(matchingClass => new ProtoCore.Namespace.Symbol(matchingClass))
-                            .ToList();
-                    var shortNames = ProtoCore.Namespace.Symbol.GetShortestUniqueNames(symbolList);
-
-                    // Get the shortest name corresponding to the fully qualified name
-                    shortName = shortNames[new ProtoCore.Namespace.Symbol(qualifiedName)];
+                    var keyToRemove = new Symbol(hiddenClassNode.Name);
+                    shortNames.Remove(keyToRemove);
                 }
             }
-            // Rewrite the AST using the shortest name
-            var newIdentList = CoreUtils.CreateNodeFromString(shortName);
-            return newIdentList;
 
+            // Get the shortest name corresponding to the fully qualified name
+            if(shortNames.TryGetValue(new Symbol(qualifiedName), out shortName))
+            {
+                return CoreUtils.CreateNodeFromString(shortName);
+            }
+
+            // If shortName for fully qualified classname is not found, it could be a base class
+            // present in class hierarchy of any of the other matchingClasses, in which case
+            // set shortName to the one for the derived class.
+            var qualifiedClassNode = matchingClasses.FirstOrDefault(x => x.Name == qualifiedName);
+            var classHierarchies = matchingClasses.Where(x => x != qualifiedClassNode).
+                Select(y => classTable.GetClassHierarchy(y));
+            foreach (var hierarchy in classHierarchies)
+            {
+                // If A derives from B, which derives from C, the hierarchy for A 
+                // is listed in that order: [A, B, C], so we start searching in reverse order.
+                for (int i = hierarchy.Count - 1; i > 0; i--)
+                {
+                    if (hierarchy[i] == qualifiedClassNode)
+                    {
+                        shortName = shortNames[new Symbol(hierarchy[0].Name)];
+                        return CoreUtils.CreateNodeFromString(shortName);
+                    }
+                }
+            }
+            return null;
         }
     }
 }

@@ -5,6 +5,7 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Media;
 using System.Windows.Threading;
 using CoreNodeModels;
 using Dynamo.Configuration;
@@ -38,14 +39,15 @@ namespace CoreNodeModelsWpf.Nodes
             this.watch = nodeModel;
             this.syncContext = new DispatcherSynchronizationContext(nodeView.Dispatcher);
 
-            var watchTree = new WatchTree();
-
             // make empty watchViewModel
             rootWatchViewModel = new WatchViewModel(dynamoViewModel.BackgroundPreviewViewModel.AddLabelForPath);
 
-            // Fix the maximum width/height of watch node.
-            nodeView.PresentationGrid.MaxWidth = Configurations.MaxWatchNodeWidth;
-            nodeView.PresentationGrid.MaxHeight = Configurations.MaxWatchNodeHeight;
+            var watchTree = new WatchTree(rootWatchViewModel);
+            watchTree.BorderThickness = new Thickness(1, 1, 1, 1);
+            watchTree.BorderBrush = new SolidColorBrush(Color.FromRgb(220,220,220));
+
+            watchTree.SetWatchNodeProperties();
+
             nodeView.PresentationGrid.Children.Add(watchTree);
             nodeView.PresentationGrid.Visibility = Visibility.Visible;
             // disable preview control
@@ -59,9 +61,6 @@ namespace CoreNodeModelsWpf.Nodes
 
         private void Bind(WatchTree watchTree, NodeView nodeView)
         {
-            // The WatchTree Control is bound to the WatchViewModel
-            watchTree.DataContext = rootWatchViewModel;
-
             // Add binding for TreeView
             var sourceBinding = new Binding("Children")
             {
@@ -100,6 +99,13 @@ namespace CoreNodeModelsWpf.Nodes
             };
             rawDataMenuItem.SetBinding(MenuItem.IsCheckedProperty, checkedBinding);
             nodeView.MainContextMenu.Items.Add(rawDataMenuItem);
+
+            var copyToClipboardMenuItem = new MenuItem
+            {
+                Header = Dynamo.Wpf.Properties.Resources.ContextMenuCopy
+            };
+            copyToClipboardMenuItem.Click += OnCopyToClipboardClick;
+            nodeView.MainContextMenu.Items.Add(copyToClipboardMenuItem);
         }
 
         private void Subscribe()
@@ -251,6 +257,12 @@ namespace CoreNodeModelsWpf.Nodes
         {
             ResetWatch();
             astBeingComputed = watch.InPorts[0].Connectors[0].Start.Owner.AstIdentifierForPreview;
+        }
+
+        private void OnCopyToClipboardClick(object sender, RoutedEventArgs e)
+        {
+            string content = rootWatchViewModel.GetNodeLabelTree();
+            if (!string.IsNullOrEmpty(content)) Clipboard.SetText(content);
         }
     }
 }

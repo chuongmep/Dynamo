@@ -17,6 +17,13 @@ namespace DSCoreNodesTests
 
         [Test]
         [Category("UnitTests")]
+        public static void GetNumber()
+        {
+            Assert.AreEqual("01200", String.GetNumber("01 Level 200"));
+        }
+
+        [Test]
+        [Category("UnitTests")]
         public static void Concat()
         {
             Assert.AreEqual("", String.Concat());
@@ -73,6 +80,16 @@ namespace DSCoreNodesTests
             Assert.AreEqual("abcdef", String.ToLower("ABCDEF"));
             Assert.AreEqual("abcdef", String.ToLower("aBCdEf"));
             Assert.AreEqual("1a2b3c4d5e6f!", String.ToLower("1a2B3C4d5E6f!"));
+        }
+
+        [Test]
+        [Category("UnitTests")]
+        public static void ToTitle()
+        {
+            Assert.AreEqual("", String.ToTitle(""));
+            Assert.AreEqual("Oneword", String.ToTitle("oneword"));
+            Assert.AreEqual("ACRONYM", String.ToTitle("ACRONYM"));
+            Assert.AreEqual("Just A\tRandom Alternation Of\nCasing", String.ToTitle("jUsT A\tRanDoM ALTerNATION of\nCaSiNg"));
         }
 
         [Test]

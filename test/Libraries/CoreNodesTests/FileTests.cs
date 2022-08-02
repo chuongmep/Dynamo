@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -184,7 +185,7 @@ namespace Dynamo.Tests
 
             var dest = GetNewFileNameOnTempPath(".txt");
             var destInfo = FileSystem.FileFromPath(dest);
-            FileSystem.CopyFile(fnInfo, dest);
+            Assert.IsTrue(FileSystem.CopyFile(fnInfo, dest));
             Assert.IsTrue(System.IO.File.Exists(dest));
             Assert.IsTrue(System.IO.File.Exists(fn));
             Assert.AreEqual(contents, FileSystem.ReadText(fnInfo));
@@ -412,6 +413,17 @@ namespace Dynamo.Tests
             Assert.AreEqual(size, bmpFromFlat.Height);
 
             Assert.AreEqual(Image.Pixels(bmpFromRect), Image.Pixels(bmpFromFlat));
+        }
+        [Test, Category("UnitTests")]
+        public void Image_FromPixels_ThrowsWhenDataTooLarge()
+        {
+            const int size = 50;
+
+            var pixels = Enumerable.Repeat(Color.ByColor(System.Drawing.Color.Blue), size).ToArray();
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+            {
+                Image.FromPixels(pixels, 1, 1);
+            });
         }
 
         [Test, Category("UnitTests")]

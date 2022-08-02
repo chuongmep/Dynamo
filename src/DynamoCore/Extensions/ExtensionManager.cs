@@ -1,10 +1,11 @@
-﻿using System;
+﻿using Dynamo.Logging;
+using Dynamo.Wpf.Interfaces;
+using System;
 using System.Collections.Generic;
-using Dynamo.Logging;
+using System.Threading.Tasks;
 
 namespace Dynamo.Extensions
 {
-
     /// <summary>
     /// An object which may request extensions to be loaded and added to the extensionsManager.
     /// </summary>
@@ -33,6 +34,7 @@ namespace Dynamo.Extensions
     public class ExtensionManager: IExtensionManager, ILogSource
     {
         private readonly List<IExtension> extensions = new List<IExtension>();
+        private readonly List<IExtensionStorageAccess> storageAccessExtensions = new List<IExtensionStorageAccess>();
         private readonly ExtensionLoader extensionLoader = new ExtensionLoader();
         private readonly Dictionary<Type, KeyValuePair<string, object>> services = new Dictionary<Type, KeyValuePair<string, object>>();
 
@@ -44,6 +46,14 @@ namespace Dynamo.Extensions
             extensionLoader.MessageLogged += Log;
             this.extensionLoader.ExtensionLoading += SubscribeExtension;
             this.ExtensionRemoved += UnsubscribeExtension;
+        }
+
+        /// <summary>
+        /// Creates ExtensionManager with directories which require package certificate verification.
+        /// </summary>
+        public ExtensionManager(IEnumerable<string> directoriesToVerify) :this()
+        {
+            this.extensionLoader.DirectoriesToVerifyCertificates.AddRange(directoriesToVerify);
         }
 
         private void RequestAddExtensionHandler(dynamic extension)
@@ -82,7 +92,6 @@ namespace Dynamo.Extensions
                 (obj as IExtensionSource).RequestLoadExtension += RequestLoadExtensionHandler;
                 (obj as IExtensionSource).RequestAddExtension += RequestAddExtensionHandler;
             }
-
         }
 
         /// <summary>
@@ -100,6 +109,12 @@ namespace Dynamo.Extensions
                 if (ExtensionAdded != null)
                 {
                     ExtensionAdded(extension);
+                }
+
+                if (extension is IExtensionStorageAccess storageAccess &&
+                    storageAccessExtensions.Find(x => x.UniqueId == extension.UniqueId) is null)
+                {
+                    storageAccessExtensions.Add(storageAccess);
                 }
             }
             else
@@ -131,6 +146,12 @@ namespace Dynamo.Extensions
                 Log(fullName + " extension cannot be disposed properly: " + ex.Message);
             }
 
+            if (extension is IExtensionStorageAccess storageAccess &&
+                storageAccessExtensions.Contains(storageAccess))
+            {
+                storageAccessExtensions.Remove(storageAccess);
+            }
+
             Log(fullName + " extension is removed");
             if (ExtensionRemoved != null)
             {
@@ -144,6 +165,14 @@ namespace Dynamo.Extensions
         public IEnumerable<IExtension> Extensions
         {
             get { return extensions; }
+        }
+
+        /// <summary>
+        /// Returns the collection of registered extensions implementing IExtensionStorageAccess
+        /// </summary>
+        public IEnumerable<IExtensionStorageAccess> StorageAccessExtensions
+        {
+            get { return storageAccessExtensions; }
         }
 
         /// <summary>
@@ -174,6 +203,7 @@ namespace Dynamo.Extensions
                 Remove(extensions[0]);
             }
 
+            storageAccessExtensions.Clear();
             extensionLoader.MessageLogged -= Log;
         }
 

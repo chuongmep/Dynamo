@@ -6,6 +6,7 @@ using ProtoCore.AssociativeGraph;
 using ProtoCore.DSASM;
 using ProtoCore.Lang;
 using ProtoCore.Lang.Replication;
+using ProtoCore.Mirror;
 using ProtoCore.Runtime;
 using ProtoCore.Utils;
 using ProtoFFI;
@@ -112,6 +113,7 @@ namespace ProtoCore
             SetProperties(compileCore.Options, compileCore.DSExecutable, compileCore.DebuggerProperties, null, compileCore.ExprInterpreterExe);
             RegisterDllTypes(compileCore.DllTypesToLoad);
             NotifyExecutionEvent(ProtoCore.ExecutionStateEventArgs.State.ExecutionBegin);
+            LastDispatchedCallSite = null;
         }
 
         public void SetProperties(Options runtimeOptions, Executable executable, DebugProperties debugProps = null, ProtoCore.Runtime.Context context = null, Executable exprInterpreterExe = null)
@@ -223,6 +225,11 @@ namespace ProtoCore
 #endregion 
         
         private Dictionary<Guid, List<StackValue>> callsiteGCRoots = new Dictionary<Guid, List<StackValue>>();
+        /// <summary>
+        /// This field is used to keep track of the last dispatched callsite 
+        /// to detect when a different callsite is dispatched to.
+        /// </summary>
+        internal CallSite LastDispatchedCallSite;
 
         public IEnumerable<StackValue> CallSiteGCRoots
         {
@@ -265,6 +272,7 @@ namespace ProtoCore
         {
             OnDispose();
             CLRModuleType.ClearTypes();
+            GraphicDataProvider.ClearMarshaller();
         }
 
         public void NotifyExecutionEvent(ExecutionStateEventArgs.State state)

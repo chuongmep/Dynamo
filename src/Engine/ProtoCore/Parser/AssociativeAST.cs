@@ -716,7 +716,7 @@ namespace ProtoCore.AST.AssociativeAST
 
         public override string ToString()
         {
-            return LeftNode + "." + RightNode;
+            return LeftNode + "." + RightNode + base.ToString();
         }
 
         public override AstKind Kind
@@ -2082,6 +2082,7 @@ namespace ProtoCore.AST.AssociativeAST
         public AssociativeNode LeftNode { get; set; }
         public Operator Optr { get; set; }
         public AssociativeNode RightNode { get; set; }
+        public bool IsInputExpression { get; set; }
         public bool isSSAPointerAssignment { get; set; }
         public bool IsFirstIdentListNode { get; set; }
 
@@ -2097,6 +2098,7 @@ namespace ProtoCore.AST.AssociativeAST
             LeftNode = left;
             Optr = optr;
             RightNode = right;
+            IsInputExpression = false;
             IsFirstIdentListNode = false;
         }
 
@@ -2117,6 +2119,7 @@ namespace ProtoCore.AST.AssociativeAST
             {
                 RightNode = NodeUtils.Clone(rhs.RightNode);
             }
+            IsInputExpression = rhs.IsInputExpression;
             IsFirstIdentListNode = rhs.IsFirstIdentListNode;
         }
 
@@ -2140,7 +2143,8 @@ namespace ProtoCore.AST.AssociativeAST
              Optr = Operator.assign;
              LeftNode = lhs;
              RightNode = NodeUtils.Clone(rhs);
-             IsFirstIdentListNode = false;
+             IsInputExpression = false;
+            IsFirstIdentListNode = false;
              
          }
 
@@ -2759,7 +2763,23 @@ namespace ProtoCore.AST.AssociativeAST
             return new NullNode();
         }
 
+        /// <summary>
+        /// Build a DesignScript Int AST node from a 32 bit int input value.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        [Obsolete("The DS language supports 64 bit integers since Dynamo 2.0. This method will be removed in a future version of Dynamo.")]
         public static IntNode BuildIntNode(int value)
+        {
+            return new IntNode(value);
+        }
+
+        /// <summary>
+        /// Build a DesignScript Int AST node from a long input value.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static IntNode BuildIntNode(long value)
         {
             return new IntNode(value);
         }
@@ -2793,23 +2813,28 @@ namespace ProtoCore.AST.AssociativeAST
             if (null == value)
                 return BuildNullNode();
 
-            string type = value.GetType().Name;
-            switch (type)
+            switch (value)
             {
-                case "Int16":
-                case "Int32":
-                case "Int64":
-                case "UInt16":
-                case "UInt32":
-                case "UInt64":
-                    return BuildIntNode(Convert.ToInt32(value));
-                case "Single":
-                case "Double":
-                    return BuildDoubleNode(Convert.ToDouble(value));
-                case "String":
-                    return BuildStringNode(value.ToString());
-                case "Boolean":
-                    return BuildBooleanNode(Convert.ToBoolean(value));
+                case short s:
+                    return BuildIntNode(Convert.ToInt64(s));
+                case int i:
+                    return BuildIntNode(Convert.ToInt64(i));
+                case long l:
+                    return BuildIntNode(l);
+                case ushort u16:
+                    return BuildIntNode(Convert.ToInt64(u16));
+                case uint u32:
+                    return BuildIntNode(u32);
+                case ulong u64:
+                    return BuildIntNode(Convert.ToInt64(u64));
+                case float s:
+                    return BuildDoubleNode(s);
+                case double d:
+                    return BuildDoubleNode(d);
+                case string s:
+                    return BuildStringNode(s);
+                case bool b:
+                    return BuildBooleanNode(b);
                 default:
                     Validity.Assert(false, "Invalide Input type to make AST node");
                     break;

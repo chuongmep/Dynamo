@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Windows.Media;
 using Autodesk.DesignScript.Interfaces;
 using Dynamo.Wpf.Rendering;
@@ -155,6 +156,481 @@ namespace WpfVisualizationTests
             p.ApplyMeshVertexColors(testColors);
 
             Assert.AreEqual(p.MeshVertexColors, testColors);
+        }
+
+        [Test]
+        public void HelixRenderPackage_AppendMeshVertexColorRange_Success()
+        {
+            var p = new HelixRenderPackage();
+
+            PushQuadIntoPackage(p);
+
+            var testColors = WhiteByteArrayOfLength(6);
+
+            p.AppendMeshVertexColorRange(testColors);
+
+            Assert.AreEqual(p.MeshVertexColors, testColors);
+            
+            PushQuadIntoPackage(p);
+            
+            p.AppendMeshVertexColorRange(testColors);
+
+            var totalColors = WhiteByteArrayOfLength(12);
+            
+            Assert.AreEqual(p.MeshVertexColors, totalColors);
+        }
+
+        [Test]
+        public void HelixRenderPackage_AppendMeshVertexColorRange_ThrowsForBadRange()
+        {
+            var p = new HelixRenderPackage();
+
+            PushQuadIntoPackage(p);
+
+            var testColors = WhiteByteArrayOfLength(5);
+
+            try
+            {
+                p.AppendMeshVertexColorRange(testColors);
+            }
+            catch(Exception e)
+            {
+                Assert.AreEqual(e.GetType(), typeof(Exception));
+            }
+
+            Assert.AreEqual(0, p.MeshVertexColorCount);
+
+            testColors = WhiteByteArrayOfLength(7);
+
+            try
+            {
+                p.AppendMeshVertexColorRange(testColors);
+            }
+            catch (Exception e)
+            {
+                Assert.AreEqual(e.GetType(), typeof(Exception));
+            }
+
+            Assert.AreEqual(0, p.MeshVertexColorCount);
+        }
+
+        [Test]
+        public void HelixRenderPackage_UpdateMeshVertexColorForRange_Success()
+        {
+            var p = new HelixRenderPackage();
+
+            PushQuadIntoPackage(p);
+
+            var testColors = WhiteByteArrayOfLength(6);
+            
+            //Set initial colors
+            p.AppendMeshVertexColorRange(testColors);
+
+            //Update colors
+            p.UpdateMeshVertexColorForRange(0,3,255, 255, 255, 255);
+
+            Assert.AreEqual(p.MeshVertexColors, testColors);
+        }
+
+        [Test]
+        public void HelixRenderPackage_UpdateMeshVertexColorForRange_ThrowsForBadRange()
+        {
+            var p = new HelixRenderPackage();
+
+            PushQuadIntoPackage(p);
+
+            //Try to update without any colors set
+            try
+            {
+                p.UpdateMeshVertexColorForRange(0, 3, 255, 255, 255, 255);
+            }
+            catch (Exception e)
+            {
+                Assert.AreEqual(e.GetType(), typeof(Exception));
+            }
+
+            Assert.AreEqual(0, p.MeshVertexColorCount);
+
+            var testColors = WhiteByteArrayOfLength(6);
+            //Set colors
+            p.AppendMeshVertexColorRange(testColors);
+
+            //Try to update colors with wrong range
+            try
+            {
+                p.UpdateMeshVertexColorForRange(0, 7, 255, 255, 255, 255);
+            }
+            catch (Exception e)
+            {
+                Assert.AreEqual(e.GetType(), typeof(Exception));
+            }
+
+            Assert.AreEqual(6, p.MeshVertexColorCount);
+
+            //Try to update colors with index error
+            try
+            {
+                p.UpdateMeshVertexColorForRange(6, 0, 255, 255, 255, 255);
+            }
+            catch (Exception e)
+            {
+                Assert.AreEqual(e.GetType(), typeof(Exception));
+            }
+
+            Assert.AreEqual(6, p.MeshVertexColorCount);
+        }
+
+        [Test]
+        public void HelixRenderPackage_AppendLineVertexColorRange_Success()
+        {
+            var p = new HelixRenderPackage();
+
+            PushLineIntoPackage(p);
+
+            var testColors = WhiteByteArrayOfLength(2);
+
+            p.AppendLineVertexColorRange(testColors);
+
+            Assert.AreEqual(p.LineStripVertexColors, testColors);
+
+            PushLineIntoPackage(p);
+
+            p.AppendLineVertexColorRange(testColors);
+
+            var totalColors = WhiteByteArrayOfLength(4);
+
+            Assert.AreEqual(p.LineStripVertexColors, totalColors);
+        }
+
+        [Test]
+        public void HelixRenderPackage_AppendLineVertexColorRange_ThrowsForBadRange()
+        {
+            var p = new HelixRenderPackage();
+
+            PushLineIntoPackage(p);
+
+            var testColors = WhiteByteArrayOfLength(1);
+
+            try
+            {
+                p.AppendLineVertexColorRange(testColors);
+            }
+            catch (Exception e)
+            {
+                Assert.AreEqual(e.GetType(), typeof(Exception));
+            }
+
+            Assert.AreEqual(0, p.LineVertexColorCount);
+
+            testColors = WhiteByteArrayOfLength(3);
+
+            try
+            {
+                p.AppendLineVertexColorRange(testColors);
+            }
+            catch (Exception e)
+            {
+                Assert.AreEqual(e.GetType(), typeof(Exception));
+            }
+
+            Assert.AreEqual(0, p.LineVertexColorCount);
+        }
+
+        [Test]
+        public void HelixRenderPackage_UpdateLineVertexColorForRange_Success()
+        {
+            var p = new HelixRenderPackage();
+
+            PushLineIntoPackage(p);
+
+            var testColors = WhiteByteArrayOfLength(2);
+
+            //Set initial colors
+            p.AppendLineVertexColorRange(testColors);
+
+            //Update colors
+            p.UpdateLineVertexColorForRange(1, 1, 255, 255, 255, 255);
+
+            Assert.AreEqual(p.LineStripVertexColors, testColors);
+        }
+
+        [Test]
+        public void HelixRenderPackage_UpdateLineVertexColorForRange_ThrowsForBadRange()
+        {
+            var p = new HelixRenderPackage();
+
+            PushLineIntoPackage(p);
+
+            //Try to update without any colors set
+            try
+            {
+                p.UpdateLineVertexColorForRange(0, 1, 255, 255, 255, 255);
+            }
+            catch (Exception e)
+            {
+                Assert.AreEqual(e.GetType(), typeof(Exception));
+            }
+
+            Assert.AreEqual(0, p.LineVertexColorCount);
+
+            var testColors = WhiteByteArrayOfLength(2);
+            //Set colors
+            p.AppendLineVertexColorRange(testColors);
+
+            //Try to update colors with wrong range
+            try
+            {
+                p.UpdateLineVertexColorForRange(0, 3, 255, 255, 255, 255);
+            }
+            catch (Exception e)
+            {
+                Assert.AreEqual(e.GetType(), typeof(Exception));
+            }
+
+            Assert.AreEqual(2, p.LineVertexColorCount);
+
+            //Try to update colors with index error
+            try
+            {
+                p.UpdateLineVertexColorForRange(1, 0, 255, 255, 255, 255);
+            }
+            catch (Exception e)
+            {
+                Assert.AreEqual(e.GetType(), typeof(Exception));
+            }
+
+            Assert.AreEqual(2, p.LineVertexColorCount);
+        }
+
+        [Test]
+        public void HelixRenderPackage_AppendPointVertexColorRange_Success()
+        {
+            var p = new HelixRenderPackage();
+
+            PushPointIntoPackage(p);
+
+            var testColors = WhiteByteArrayOfLength(1);
+
+            p.AppendPointVertexColorRange(testColors);
+
+            Assert.AreEqual(p.PointVertexColors, testColors);
+
+            PushPointIntoPackage(p);
+
+            p.AppendPointVertexColorRange(testColors);
+
+            var totalColors = WhiteByteArrayOfLength(2);
+
+            Assert.AreEqual(p.PointVertexColors, totalColors);
+        }
+
+        [Test]
+        public void HelixRenderPackage_AppendPointVertexColorRange_ThrowsForBadRange()
+        {
+            var p = new HelixRenderPackage();
+
+            PushPointIntoPackage(p);
+            PushPointIntoPackage(p);
+            
+            var testColors = WhiteByteArrayOfLength(1);
+
+            try
+            {
+                p.AppendPointVertexColorRange(testColors);
+            }
+            catch (Exception e)
+            {
+                Assert.AreEqual(e.GetType(), typeof(Exception));
+            }
+
+            Assert.AreEqual(0, p.PointVertexColorCount);
+
+            testColors = WhiteByteArrayOfLength(3);
+
+            try
+            {
+                p.AppendPointVertexColorRange(testColors);
+            }
+            catch (Exception e)
+            {
+                Assert.AreEqual(e.GetType(), typeof(Exception));
+            }
+
+            Assert.AreEqual(0, p.PointVertexColorCount);
+        }
+
+        [Test]
+        public void HelixRenderPackage_UpdatePointVertexColorForRange_Success()
+        {
+            var p = new HelixRenderPackage();
+
+            PushPointIntoPackage(p);
+            PushPointIntoPackage(p);
+
+            var testColors = WhiteByteArrayOfLength(2);
+
+            //Set initial colors
+            p.AppendPointVertexColorRange(testColors);
+
+            //Update colors
+            p.UpdatePointVertexColorForRange(1, 1, 255, 255, 255, 255);
+
+            Assert.AreEqual(p.PointVertexColors, testColors);
+        }
+
+        [Test]
+        public void HelixRenderPackage_UpdatePointVertexColorForRange_ThrowsForBadRange()
+        {
+            var p = new HelixRenderPackage();
+
+            PushPointIntoPackage(p);
+            PushPointIntoPackage(p);
+            
+            //Try to update without any colors set
+            try
+            {
+                p.UpdatePointVertexColorForRange(0, 1, 255, 255, 255, 255);
+            }
+            catch (Exception e)
+            {
+                Assert.AreEqual(e.GetType(), typeof(Exception));
+            }
+
+            Assert.AreEqual(0, p.PointVertexColorCount);
+
+            var testColors = WhiteByteArrayOfLength(2);
+            //Set colors
+            p.AppendPointVertexColorRange(testColors);
+
+            //Try to update colors with wrong range
+            try
+            {
+                p.UpdatePointVertexColorForRange(0, 3, 255, 255, 255, 255);
+            }
+            catch (Exception e)
+            {
+                Assert.AreEqual(e.GetType(), typeof(Exception));
+            }
+
+            Assert.AreEqual(2, p.PointVertexColorCount);
+
+            //Try to update colors with index error
+            try
+            {
+                p.UpdatePointVertexColorForRange(1, 0, 255, 255, 255, 255);
+            }
+            catch (Exception e)
+            {
+                Assert.AreEqual(e.GetType(), typeof(Exception));
+            }
+
+            Assert.AreEqual(2, p.PointVertexColorCount);
+        }
+
+        [Test]
+        public void HelixRenderPackage_ObsoleteCheck()
+        {
+            var p = new HelixRenderPackage();
+
+            PushQuadIntoPackage(p);
+            PushLineIntoPackage(p);
+            PushPointIntoPackage(p);
+
+            var testColors = WhiteByteArrayOfLength(6);
+            try
+            {
+                p.AllowLegacyColorOperations = false;
+                p.ApplyMeshVertexColors(testColors);
+            }
+            catch(Exception e)
+            {
+                Assert.AreEqual(e.GetType(), typeof(LegacyRenderPackageMethodException));
+            }
+            
+            Assert.AreEqual(0, p.MeshVertexColorCount);
+        }
+
+        [Test]
+        public void SetBaseTessellationRange_SetsDataCorrectly()
+        {
+            var p = new HelixRenderPackage();
+            var id = Guid.NewGuid();
+            p.AddTriangleVertex(0, 0, 0);
+            p.AddTriangleVertex(0, 0, 1);
+            p.AddTriangleVertex(1, 0, 0);
+            p.AddInstanceGuidForMeshVertexRange(0, 2, id);
+            p.AddInstanceMatrix(new float[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 }, id);
+            p.AddInstanceMatrix(new float[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 }, id);
+            Assert.AreEqual(0, p.MeshVertexRangesAssociatedWithInstancing[id].Item1);
+            Assert.AreEqual(2, p.MeshVertexRangesAssociatedWithInstancing[id].Item2);
+            Assert.AreEqual(3, p.MeshVertexCount);
+        }
+        [Test]
+        public void SetBaseTessellationRange_ThrowsWhenIDAlreadyExists()
+        {
+            var p = new HelixRenderPackage();
+            var id = Guid.NewGuid();
+            p.AddTriangleVertex(0, 0, 0);
+            p.AddTriangleVertex(0, 0, 1);
+            p.AddTriangleVertex(1, 0, 0);
+            Assert.Throws<Exception>(() =>
+            {
+                p.AddInstanceGuidForMeshVertexRange(0, 2, id);
+                p.AddInstanceGuidForMeshVertexRange(0, 2, id);
+                p.AddInstanceMatrix(new float[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 }, id);
+
+            });
+
+        }
+        [Test]
+        public void AddInstanceMatrix_ThrowsWhenIDDoesNotExist()
+        {
+            var p = new HelixRenderPackage();
+            var id = Guid.NewGuid();
+            p.AddTriangleVertex(0, 0, 0);
+            p.AddTriangleVertex(0, 0, 1);
+            p.AddTriangleVertex(1, 0, 0);
+            Assert.Throws<Exception>(() =>
+            {
+                p.AddInstanceMatrix(new float[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 }, id);
+            });
+
+        }
+        [Test]
+        public void SetBaseTessellationRange_ThrowsWithBadRange()
+        {
+            var p = new HelixRenderPackage();
+            var id = Guid.NewGuid();
+            Assert.Throws<Exception>(() =>
+            {
+                p.AddInstanceGuidForMeshVertexRange(0, 2, id);
+                p.AddInstanceMatrix(new float[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 }, id);
+
+            });
+          
+        }
+        [Test]
+        public void InstancePackage_ContainsChecksAllInternalCollection()
+        {
+            var p = new HelixRenderPackage();
+            var id = Guid.NewGuid();
+            Assert.IsFalse(p.ContainsTessellationId(id));
+
+            p.AddTriangleVertex(0, 0, 0);
+            p.AddTriangleVertex(0, 0, 1);
+            p.AddTriangleVertex(1, 0, 0);
+            p.AddInstanceGuidForMeshVertexRange(0, 2, id);
+            p.AddInstanceMatrix(new float[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 }, id);
+            Assert.IsTrue(p.ContainsTessellationId(id));
+
+            p = new HelixRenderPackage();
+            Assert.IsFalse(p.ContainsTessellationId(id));
+            p.AddLineStripVertex(0, 0, 0);
+            p.AddLineStripVertex(0, 0, 1);
+            p.AddLineStripVertex(1, 0, 0);
+            p.AddInstanceGuidForLineVertexRange(0, 2, id);
+            p.AddInstanceMatrix(new float[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 }, id);
+            Assert.IsTrue(p.ContainsTessellationId(id));
         }
 
         /// <summary>

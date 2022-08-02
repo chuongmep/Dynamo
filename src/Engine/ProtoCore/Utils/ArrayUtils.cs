@@ -11,18 +11,8 @@ namespace ProtoCore.Utils
     {
         private static int RECURSION_LIMIT = 1024;
 
-        /// <summary>
-        /// If an empty array is passed, the result will be null
-        /// if there are instances, but they share no common supertype the result will be var
-        /// </summary>
-        public static ClassNode GetGreatestCommonSubclassForArray(StackValue array, RuntimeCore runtimeCore)
+        internal static ClassNode GetGreatestCommonSubclassForArrayInternal(Dictionary<ClassNode, int> typeStats, RuntimeCore runtimeCore)
         {
-            if (!array.IsArray)
-                throw new ArgumentException("The stack value provided was not an array");
-
-            Dictionary<ClassNode, int> typeStats = GetTypeStatisticsForArray(array, runtimeCore);
-
-
             //@PERF: This could be improved with a 
             List<List<int>> chains = new List<List<int>>();
             HashSet<int> commonTypeIDs = new HashSet<int>();
@@ -42,16 +32,13 @@ namespace ProtoCore.Utils
                 foreach (int nodeId in chain)
                     commonTypeIDs.Add(nodeId);
 
- 
-
             }
 
             //Remove nulls if they exist
             {
- 
-            if (commonTypeIDs.Contains(
-                (int)PrimitiveType.Null))
-                commonTypeIDs.Remove((int)PrimitiveType.Null);
+
+                if (commonTypeIDs.Contains((int)PrimitiveType.Null))
+                    commonTypeIDs.Remove((int)PrimitiveType.Null);
 
                 List<List<int>> nonNullChains = new List<List<int>>();
 
@@ -63,9 +50,8 @@ namespace ProtoCore.Utils
                     if (chain.Count > 0)
                         nonNullChains.Add(chain);
                 }
-
                 chains = nonNullChains;
-                    
+
             }
 
 
@@ -75,8 +61,6 @@ namespace ProtoCore.Utils
                 foreach (List<int> chain in chains)
                 {
                     commonTypeIDs.IntersectWith(chain);
-                    
-
                 }
             }
 
@@ -90,7 +74,7 @@ namespace ProtoCore.Utils
 
             List<int> lookupChain = chains[0];
 
-            
+
             //Insertion sort the IDs, we may only have a partial ordering on them.
             List<int> orderedTypes = new List<int>();
 
@@ -117,22 +101,42 @@ namespace ProtoCore.Utils
             return runtimeCore.DSExecutable.classTable.ClassNodes[orderedTypes.First()];
         }
 
-        public static Dictionary<int, StackValue> GetTypeExamplesForLayer(StackValue array, RuntimeCore runtimeCore)
+        /// <summary>
+        /// If an empty array is passed, the result will be null
+        /// if there are instances, but they share no common supertype the result will be var
+        /// </summary>
+        public static ClassNode GetGreatestCommonSubclassForArray(StackValue array, RuntimeCore runtimeCore)
+        {
+            if (!array.IsArray)
+                throw new ArgumentException("The stack value provided was not an array");
+
+            Dictionary<ClassNode, int> typeStats = GetTypeStatisticsForArray(array, runtimeCore);
+
+            return GetGreatestCommonSubclassForArrayInternal(typeStats, runtimeCore);
+            
+        }
+
+        /// <summary>
+        /// This method returns the distinct(by metadata type) reduced params for all the elements inside the
+        /// paramStackValue, if it is an array. If it is not an array, it just returns the paramStackValue.
+        /// </summary>
+        /// <param name="paramStackValue"></param>
+        /// <param name="runtimeCore"></param>
+        /// <returns> A dictionary where the value is the current ReducedParam and the key is its metaData type</returns>
+        public static Dictionary<int, StackValue> GetTypeExamplesForLayer(StackValue paramStackValue, RuntimeCore runtimeCore)
         {
             Dictionary<int, StackValue> usageFreq = new Dictionary<int, StackValue>();
 
-            if (!array.IsArray)
+            if (!paramStackValue.IsArray)
             {
-                usageFreq.Add(array.metaData.type, array);
+                usageFreq.Add(paramStackValue.metaData.type, paramStackValue);
                 return usageFreq;
             }
 
             //This is the element on the heap that manages the data structure
-            var dsArray = runtimeCore.Heap.ToHeapObject<DSArray>(array);
+            var dsArray = runtimeCore.Heap.ToHeapObject<DSArray>(paramStackValue);
             foreach (var sv in dsArray.Values)
             {
-                if(IsEmpty(sv, runtimeCore)) continue;
-
                 if (!usageFreq.ContainsKey(sv.metaData.type))
                 {
                     usageFreq.Add(sv.metaData.type, sv);
@@ -140,6 +144,47 @@ namespace ProtoCore.Utils
             }
 
             return usageFreq;
+        }
+
+        /// <summary>
+        /// Similar to GetTypeExamplesForLayer but it returns all non-empty arrays.
+        /// Its purpose is to support inspecting heterogeneous arrays in replication scenarios.
+        /// </summary>
+        /// <param name="array"></param>
+        /// <param name="runtimeCore"></param>
+        /// <returns></returns>
+        internal static List<StackValue> GetTypeExamplesForLayerWithoutArraySampling(StackValue array, RuntimeCore runtimeCore)
+        {
+            var result = new List<StackValue>();
+            var alreadyFoundTypes = new HashSet<int>();
+
+            if (!array.IsArray)
+            {
+                result.Add(array);
+                return result;
+            }
+
+            var dsArray = runtimeCore.Heap.ToHeapObject<DSArray>(array);
+            foreach (var sv in dsArray.Values)
+            {
+                if (sv.IsArray)
+                {
+                    if (!IsEmpty(sv, runtimeCore))
+                    {
+                        result.Add(sv);
+                    }
+                }
+                else
+                {
+                    if (!alreadyFoundTypes.Contains(sv.metaData.type))
+                    {
+                        alreadyFoundTypes.Add(sv.metaData.type);
+                        result.Add(sv);
+                    }
+                }
+            }
+
+            return result;
         }
 
 
@@ -178,7 +223,7 @@ namespace ProtoCore.Utils
         /// </summary>
         /// <param name="array"></param>
         /// <param name="core"></param>
-        /// <returns></returns>
+        /// <returns>usage frequency by type</returns>
         public static Dictionary<ClassNode, int> GetTypeStatisticsForArray(StackValue array, RuntimeCore runtimeCore)
         {
             if (!array.IsArray)
@@ -214,7 +259,7 @@ namespace ProtoCore.Utils
                     if (!usageFreq.ContainsKey(cn))
                         usageFreq.Add(cn, 0);
 
-                    usageFreq[cn] = usageFreq[cn] + 1;
+                    usageFreq[cn] += 1;
                 }
             }
 
@@ -296,31 +341,54 @@ namespace ProtoCore.Utils
         /// <returns> true if the element was found </returns>
         public static bool GetFirstNonArrayStackValue(StackValue svArray, ref StackValue sv, RuntimeCore runtimeCore)
         {
-            RuntimeMemory rmem = runtimeCore.RuntimeMemory;
             if (!svArray.IsArray)
             {
                 return false;
             }
 
+            var svFound = GetFirstNonArrayStackValueRecursive(svArray, runtimeCore);
+            if (svFound.HasValue)
+            {
+                sv = svFound.Value.ShallowClone();
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Recursively searches a stack value that is not an array in the given array.
+        /// </summary>
+        /// <param name="svArray">Stack value representing an array</param>
+        /// <param name="runtimeCore">Runtime core</param>
+        /// <returns>The first stack value found that is not an array. Null if none is found.</returns>
+        private static StackValue? GetFirstNonArrayStackValueRecursive(StackValue svArray, RuntimeCore runtimeCore)
+        {
+            RuntimeMemory rmem = runtimeCore.RuntimeMemory;
             var array = rmem.Heap.ToHeapObject<DSArray>(svArray);
             if (!array.Values.Any())
             {
-                return false;
+                return null;
             }
 
-            while (array.GetValueFromIndex(0, runtimeCore).IsArray)
+            foreach (var svItem in array.Values)
             {
-                array = rmem.Heap.ToHeapObject<DSArray>(array.GetValueFromIndex(0, runtimeCore));
-
-                // Handle the case where the array is valid but empty
-                if (!array.Values.Any())
+                if (svItem.IsArray)
                 {
-                    return false;
+                    var svFound = GetFirstNonArrayStackValueRecursive(svItem, runtimeCore);
+                    // If we found a non-array sv value, return it. Otherwise, keep looking in the array.
+                    if (svFound.HasValue)
+                    {
+                        return svFound;
+                    }
+                }
+                else
+                {
+                    return svItem;
                 }
             }
 
-            sv = array.GetValueFromIndex(0, runtimeCore).ShallowClone();
-            return true;
+            return null;
         }
 
         private static StackValue[] GetFlattenValue(StackValue array, RuntimeCore runtimeCore)

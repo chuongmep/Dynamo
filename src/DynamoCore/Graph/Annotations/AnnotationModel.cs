@@ -6,8 +6,10 @@ using Dynamo.Graph.Nodes;
 using Dynamo.Graph.Notes;
 using Dynamo.Graph.Workspaces;
 using Dynamo.Properties;
+using Dynamo.Selection;
 using Dynamo.Utilities;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 
 namespace Dynamo.Graph.Annotations
 {
@@ -20,6 +22,9 @@ namespace Dynamo.Graph.Annotations
         private const double MinTextHeight = 20.0;
         private const double ExtendSize = 10.0;
         private const double ExtendYHeight = 5.0;
+        private const double NoteYAdjustment = 8.0;
+
+        double lastExpandedWidth = 0;
 
         #region Properties
 
@@ -66,6 +71,8 @@ namespace Dynamo.Graph.Annotations
             }
             set
             {
+                if (width == value) return;
+
                 width = value;
                 RaisePropertyChanged("Width");
             }
@@ -73,7 +80,8 @@ namespace Dynamo.Graph.Annotations
 
         private double height;
         /// <summary>
-        /// Returns height of the group
+        /// Returns the full height of the group.
+        /// That means ModelAreaHeight + TextBlockHeight 
         /// </summary>
         public override double Height
         {
@@ -83,8 +91,25 @@ namespace Dynamo.Graph.Annotations
             }
             set
             {
+                if (height == value) return;
+
                 height = value;
                 RaisePropertyChanged("Height");
+            }
+        }
+
+        private double modelAreaHeight;
+        /// <summary>
+        /// Returns the height of the area that all
+        /// model belonging to this group is encapsulated in.
+        /// </summary>
+        public double ModelAreaHeight
+        {
+            get { return modelAreaHeight; }
+            set
+            {
+                modelAreaHeight = value;
+                RaisePropertyChanged(nameof(ModelAreaHeight));
             }
         }
 
@@ -118,6 +143,20 @@ namespace Dynamo.Graph.Annotations
 
         }
 
+        private string annotationDescriptionText;
+        /// <summary>
+        /// Group description text
+        /// </summary>
+        public string AnnotationDescriptionText
+        {
+            get => annotationDescriptionText;
+            set
+            {
+                annotationDescriptionText = value;
+                RaisePropertyChanged(nameof(AnnotationDescriptionText));
+            }
+        }
+
         private string background;
         /// <summary>
         /// Returns background of the group
@@ -132,7 +171,7 @@ namespace Dynamo.Graph.Annotations
             }
         }
               
-        private IEnumerable<ModelBase> nodes;
+        private HashSet<ModelBase> nodes;
         /// <summary>
         /// Returns collection of models (nodes and notes) which the group contains
         /// </summary>
@@ -141,15 +180,40 @@ namespace Dynamo.Graph.Annotations
             get { return nodes; }
             set
             {
-                nodes = value.ToList(); ;
+                // Unsubscribe all content in group before
+                // overwriting with the new content.
+                // If we dont do this we end up with
+                // lots of memory leaks that eventually will
+                // lead to a stackoverflow exception
                 if (nodes != null && nodes.Any())
                 {
                     foreach (var model in nodes)
                     {
-                        model.PropertyChanged +=model_PropertyChanged;
-                        model.Disposed+=model_Disposed;
+                        model.PropertyChanged -= model_PropertyChanged;
+                        model.Disposed -= model_Disposed;
                     }
                 }
+
+                // First remove all pins from the input
+                var valuesWithoutPins = value
+                    .Where(x => !(x is ConnectorPinModel));
+
+                // then recalculate which pins belongs to the
+                // group and add them to the nodes collection
+                var pinModels = GetPinsFromNodes(value.OfType<NodeModel>());
+                nodes = valuesWithoutPins.Concat(pinModels)
+                    .ToHashSet<ModelBase>();
+
+                if (nodes != null && nodes.Any())
+                {
+                    foreach (var model in nodes)
+                    {
+                        model.PropertyChanged += model_PropertyChanged;
+                        model.Disposed += model_Disposed;
+                    }
+                }
+                UpdateBoundaryFromSelection();
+                RaisePropertyChanged(nameof(Nodes));
             }            
         }
 
@@ -226,6 +290,94 @@ namespace Dynamo.Graph.Annotations
             }
         }
 
+        private NodeModel pinnedNode;
+        
+        /// <summary>
+        /// Optional reference to pinned node
+        /// This reference will be used in note serialization
+        /// as note is deserialized from an annotation model
+        /// </summary>
+        public NodeModel PinnedNode
+        {
+            get { return pinnedNode; }
+            set
+            {
+                pinnedNode = value;
+                RaisePropertyChanged(nameof(PinnedNode));
+            }
+        }
+
+        private double widthAdjustment;
+        /// <summary>
+        /// Adjustment margin to be added to the width of the
+        /// group. When set the width of the group will always
+        /// be set to Width + widthAdjustment
+        /// </summary>
+        public double WidthAdjustment
+        {
+            get { return widthAdjustment; }
+            set 
+            {
+                if (value == widthAdjustment) return;
+                widthAdjustment = value;
+                UpdateBoundaryFromSelection();
+            }
+        }
+
+        private double heightAdjustment;
+        /// <summary>
+        /// Adjustment margin to be added to the height of the
+        /// group. When set the height of the group will always
+        /// be set to Height + heightAdjustment
+        /// </summary>
+        public double HeightAdjustment
+        {
+            get { return heightAdjustment; }
+            set 
+            {
+                if (value == heightAdjustment) return;
+                heightAdjustment = value;
+                UpdateBoundaryFromSelection();
+            }
+        }
+
+        private bool isExpanded = true;
+        /// <summary>
+        /// Returns whether or not the group is expanded.
+        /// </summary>
+        public bool IsExpanded 
+        {
+            get { return isExpanded; }
+            set
+            {
+                isExpanded = value;
+                UpdateBoundaryFromSelection();
+                UpdateErrorAndWarningIconVisibility();
+            }
+        }
+
+        private ElementState groupState = ElementState.Active;
+
+        /// <summary>
+        /// Indicates whether the group contains nodes that are in an info/warning/error state.
+        /// This includes the state of any nodes that are in nested groups.
+        /// </summary>
+        [JsonIgnore]
+        public ElementState GroupState
+        {
+            get => groupState;
+            internal set
+            {
+                groupState = value;
+                RaisePropertyChanged(nameof(GroupState));
+            }
+        }
+
+        /// <summary>
+        /// Checks if this group contains any nested groups.
+        /// </summary>
+        public bool HasNestedGroups => nodes.OfType<AnnotationModel>().Any();
+
         #endregion
 
         /// <summary>
@@ -233,26 +385,65 @@ namespace Dynamo.Graph.Annotations
         /// </summary>
         /// <param name="nodes">The nodes.</param>
         /// <param name="notes">The notes.</param>
-        public AnnotationModel(IEnumerable<NodeModel> nodes, IEnumerable<NoteModel> notes)
-        {                                 
-            var nodeModels = nodes as NodeModel[] ?? nodes.ToArray();           
+        public AnnotationModel(IEnumerable<NodeModel> nodes, IEnumerable<NoteModel> notes) : this(nodes, notes, new List<AnnotationModel>()) { }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="AnnotationModel"/> class.
+        /// </summary>
+        /// <param name="nodes">The nodes that belongs to this group.</param>
+        /// <param name="notes">The notes that belongs to this group.</param>
+        /// <param name="groups">The groups that belongs to this group</param>
+        public AnnotationModel(IEnumerable<NodeModel> nodes, IEnumerable<NoteModel> notes, IEnumerable<AnnotationModel> groups)
+        {
+            var nodeModels = nodes as NodeModel[] ?? nodes.ToArray();
             var noteModels = notes as NoteModel[] ?? notes.ToArray();
-            DeletedModelBases = new List<ModelBase>(); 
-            this.Nodes = nodeModels.Concat(noteModels.Cast<ModelBase>()).ToList();      
+            var groupModels = groups as AnnotationModel[] ?? groups.ToArray();
+
+            DeletedModelBases = new List<ModelBase>();
+            this.Nodes = nodeModels
+                .Concat(noteModels.Cast<ModelBase>())
+                .Concat(groupModels.Cast<ModelBase>())
+                .ToList();
+
             UpdateBoundaryFromSelection();
+            UpdateErrorAndWarningIconVisibility();
         }
 
+        private ConnectorPinModel[] GetPinsFromNodes(IEnumerable<NodeModel> nodeModels)
+        {
+            if (nodeModels is null ||
+                !nodeModels.Any())
+            {
+                return new List<ConnectorPinModel>().ToArray();
+            }
+
+            var connectorPinsToAdd = nodeModels
+                .SelectMany(x => x.AllConnectors)
+                .Where(x => nodeModels.Contains(x.Start.Owner) && nodeModels.Contains(x.End.Owner))
+                .SelectMany(x => x.ConnectorPinModels)
+                .Distinct()
+                .ToArray();
+
+            return connectorPinsToAdd;
+        }
 
         private void model_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             switch (e.PropertyName)
-            {                
-                case "Position":                  
-                     UpdateBoundaryFromSelection();
-                    break;
-                case "Text":
+            {
+                case nameof(Position):
                     UpdateBoundaryFromSelection();
-                    break;               
+                    break;
+                case nameof(Text):
+                    UpdateBoundaryFromSelection();
+                    break;
+                case nameof(ModelBase.Height):
+                case nameof(ModelBase.Width):
+                    UpdateBoundaryFromSelection();
+                    break;
+                case nameof(NodeModel.State):
+                    UpdateErrorAndWarningIconVisibility();
+                    break;
             }
         }
 
@@ -278,100 +469,133 @@ namespace Dynamo.Graph.Annotations
         internal void UpdateBoundaryFromSelection()
         {          
             var selectedModelsList = nodes.ToList();
-          
+
             if (selectedModelsList.Any())
             {
                 var groupModels = selectedModelsList.OrderBy(x => x.X).ToList();
-              
+
                 //Shifting x by 10 and y to the height of textblock
                 var regionX = groupModels.Min(x => x.X) - ExtendSize;
                 //Increase the Y value by 10. This provides the extra space between
                 // a model and textbox. Otherwise there will be some overlap
-                var regionY = groupModels.Min(y => y.Y) - ExtendSize - (TextBlockHeight == 0.0 ? MinTextHeight : TextBlockHeight);
-              
+                var regionY = groupModels.Min(y => (y as NoteModel) == null ? (y.Y) : (y.Y - NoteYAdjustment)) -
+                    ExtendSize - (TextBlockHeight == 0.0 ? MinTextHeight : TextBlockHeight);
+
                 //calculates the distance between the nodes
-                var xDistance = groupModels.Max(x => x.X) - regionX;
-                var yDistance = groupModels.Max(x => x.Y) - regionY;
-
-                var widthandheight = CalculateWidthAndHeight();
-
-                var maxWidth = widthandheight.Item1;
-                var maxHeight = widthandheight.Item2;
-
+                var xDistance = groupModels.Max(x => (x.X + x.Width)) - regionX;
+                var yDistance = groupModels.Max(y => (y as NoteModel) == null ? (y.Y + y.Height) : (y.Y + y.Height - NoteYAdjustment)) - regionY;
+                
                 // InitialTop is to store the Y value without the Textblock height
-                this.InitialTop = groupModels.Min(y => y.Y);
+                this.InitialTop = groupModels.Min(y => (y as NoteModel) == null ? (y.Y) : (y.Y - NoteYAdjustment));
+
 
                 var region = new Rect2D
                 {
                     X = regionX,
                     Y = regionY,
-                    Width = xDistance + maxWidth + ExtendSize,
-                    Height = yDistance + maxHeight + ExtendSize
+                    Width = xDistance + ExtendSize + WidthAdjustment,
+                    Height = yDistance + ExtendSize + ExtendYHeight + HeightAdjustment - TextBlockHeight
                 };
-             
+
+                bool positionChanged = region.X != X || region.Y != Y;
+
                 this.X = region.X;              
                 this.Y = region.Y;
-                this.Width = Math.Max(region.Width, TextMaxWidth + ExtendSize);
-                this.Height = region.Height;
+                this.ModelAreaHeight = IsExpanded ? region.Height : ModelAreaHeight;
+                Height = this.ModelAreaHeight + TextBlockHeight;
 
-                //Calculate the boundary if there is any overlap
-                ModelBase overlap = null;
-                foreach (var nodesList in Nodes)
+                if (IsExpanded)
                 {
-                    if (!region.Contains(nodesList.Rect))
-                    {
-                        overlap = nodesList;
-                        if (overlap.Rect.Top < this.X ||
-                                    overlap.Rect.Bottom > region.Bottom) //Overlap in height - increase the region height
-                        {
-                            if (overlap.Rect.Bottom - region.Bottom > 0)
-                            {
-                                this.Height += overlap.Rect.Bottom - region.Bottom + ExtendSize + ExtendYHeight;
-                            }
-                            region.Height = this.Height;
-                        }
-                        if (overlap.Rect.Left < this.Y ||
-                                overlap.Rect.Right > region.Right) //Overlap in width - increase the region width
-                        {
-                            if (overlap.Rect.Right - region.Right > 0)
-                            {
-                                this.Width += overlap.Rect.Right - region.Right + ExtendSize;
-                            }
-                            region.Width = this.Width;
-                        }
-                    }
+                    Width = Math.Max(region.Width, TextMaxWidth + ExtendSize);                    
+                    lastExpandedWidth = Width;
                 }
-                               
+                else
+                {
+                    //If the annotation is not expanded, then it will remain the same width of the last time it was expanded
+                    Width = lastExpandedWidth;
+                }
+
                 //Initial Height is to store the Actual height of the group.
                 //that is the height should be the initial height without the textblock height.
                 if (this.InitialHeight <= 0.0)
                     this.InitialHeight = region.Height;
+
+                if (positionChanged)
+                {
+                    RaisePropertyChanged(nameof(Position));
+                }
             }
             else
             {
                 this.Width = 0;
-                this.height = 0;               
+                this.Height = 0;               
             }
+        }
+
+        /// <summary>
+        /// Determines whether this group displays warning or error icons in its header.
+        /// </summary>
+        private void UpdateErrorAndWarningIconVisibility()
+        {
+            // No icons are displayed when the group is expanded / not collapsed.
+            if (IsExpanded)
+            {
+                GroupState = ElementState.Active;
+                return;
+            }
+
+            List<NodeModel> nodes = Nodes
+                .OfType<NodeModel>()
+                .ToList();
+
+            List<AnnotationModel> groups = Nodes
+                .OfType<AnnotationModel>()
+                .ToList();
+                
+            // If anything in this group is in an error state, we display an error icon.
+            if (nodes.Any(x => x.State == ElementState.Error) ||
+                groups.Any(x => x.GroupState == ElementState.Error))
+            {
+                GroupState = ElementState.Error;
+                return;
+            }
+
+            // If anything in this group is in a warning state, we display a warning icon.
+            if (nodes.Any(x => x.State == ElementState.Warning) ||
+                groups.Any(x => x.GroupState == ElementState.Warning))
+            {
+                GroupState = ElementState.Warning;
+                return;
+            }
+
+            GroupState = ElementState.Active;
+        }
+
+        /// <summary>
+        /// Fired when this group is removed from its parent group
+        /// </summary>
+        internal event EventHandler RemovedFromGroup;
+
+        private void OnRemovedFromGroup()
+        {
+            RemovedFromGroup?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Fired when this group is added to another group
+        /// </summary>
+        internal event EventHandler AddedToGroup;
+
+        private void OnAddedToGroup()
+        {
+            AddedToGroup?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
         /// Group the Models based on Height and Width
         /// </summary>
         /// <returns> the width and height of the last model </returns>
-        private Tuple<Double,Double> CalculateWidthAndHeight()
-        {           
-            var xgroup = Nodes.OrderBy(x => x.X).ToList();
-            var ygroup = Nodes.OrderBy(x => x.Y).ToList();
-            double yheight = ygroup.Last().Height;
 
-            //If the last model is Node, then increase the height so that 
-            //node border does not overlap with the group
-            if (ygroup.Last() is NodeModel)
-                yheight = yheight + ExtendYHeight;
-
-            return Tuple.Create(xgroup.Last().Width, yheight);
-        }
-              
         #region Serialization/Deserialization Methods
 
         protected override bool UpdateValueCore(UpdateValueParams updateValueParams)
@@ -390,6 +614,9 @@ namespace Dynamo.Graph.Annotations
                 case "TextBlockText":
                     AnnotationText = value;
                     break;
+                case nameof(AnnotationDescriptionText):
+                    AnnotationDescriptionText = value;
+                    break;
             }
 
             return base.UpdateValueCore(updateValueParams);
@@ -401,6 +628,7 @@ namespace Dynamo.Graph.Annotations
             XmlElementHelper helper = new XmlElementHelper(element);
             helper.SetAttribute("guid", this.GUID);
             helper.SetAttribute("annotationText", this.AnnotationText);
+            helper.SetAttribute(nameof(AnnotationDescriptionText), this.AnnotationDescriptionText);
             helper.SetAttribute("left", this.X);
             helper.SetAttribute("top", this.Y);
             helper.SetAttribute("width", this.Width);
@@ -409,7 +637,9 @@ namespace Dynamo.Graph.Annotations
             helper.SetAttribute("InitialTop", this.InitialTop);
             helper.SetAttribute("InitialHeight", this.InitialHeight);
             helper.SetAttribute("TextblockHeight", this.TextBlockHeight);
-            helper.SetAttribute("backgrouund", (this.Background == null ? "" : this.Background.ToString()));        
+            helper.SetAttribute("backgrouund", (this.Background == null ? "" : this.Background.ToString()));
+            helper.SetAttribute(nameof(IsSelected), IsSelected);
+
             //Serialize Selected models
             XmlDocument xmlDoc = element.OwnerDocument;            
             foreach (var guids in this.Nodes.Select(x => x.GUID))
@@ -428,7 +658,8 @@ namespace Dynamo.Graph.Annotations
         {         
             XmlElementHelper helper = new XmlElementHelper(element);
             this.GUID = helper.ReadGuid("guid", this.GUID);
-            this.annotationText = helper.ReadString("annotationText", Resources.GroupDefaultText);
+            this.annotationText = helper.ReadString("annotationText", Resources.GroupNameDefaultText);
+            this.AnnotationDescriptionText = helper.ReadString(nameof(AnnotationDescriptionText), Resources.GroupDefaultText);
             this.X = helper.ReadDouble("left", DoubleValue);
             this.Y = helper.ReadDouble("top", DoubleValue);
             this.width = helper.ReadDouble("width", DoubleValue);
@@ -438,9 +669,17 @@ namespace Dynamo.Graph.Annotations
             this.textBlockHeight = helper.ReadDouble("TextblockHeight", DoubleValue);
             this.InitialTop = helper.ReadDouble("InitialTop", DoubleValue);
             this.InitialHeight = helper.ReadDouble("InitialHeight", DoubleValue);
+            this.IsSelected = helper.ReadBoolean(nameof(IsSelected), false);            
+
+            if (IsSelected)
+                DynamoSelection.Instance.Selection.Add(this);
+            else
+                DynamoSelection.Instance.Selection.Remove(this);
+
             //Deserialize Selected models
             if (element.HasChildNodes)
             {
+                var removedModels = new List<ModelBase>();
                 var listOfModels = new List<ModelBase>();
                 if (Nodes != null)
                 {
@@ -459,7 +698,13 @@ namespace Dynamo.Graph.Annotations
                     }
                 }
 
+                removedModels = Nodes.Except(listOfModels).ToList();
                 Nodes = listOfModels;
+
+                foreach (var model in removedModels)
+                {
+                    UnsubscribeRemovedModel(model);
+                }
             }
 
             //On any Undo Operation, current values are restored to previous values.
@@ -468,23 +713,36 @@ namespace Dynamo.Graph.Annotations
             RaisePropertyChanged("FontSize");
             RaisePropertyChanged("AnnotationText");
             RaisePropertyChanged("Nodes");
+            this.ReportPosition();
         }
 
         /// <summary>
-        /// This is called when a model is deleted from a group
-        /// and UNDO is clicked.
+        /// This is called when a model is added to or deleted from a group.
         /// </summary>
         /// <param name="model">The model.</param>
         /// <param name="checkOverlap"> checkoverlap determines whether the selected model is 
         /// completely inside that group</param>
-        internal void AddToSelectedModels(ModelBase model, bool checkOverlap = false)
-        {           
+        internal void AddToTargetAnnotationModel(ModelBase model, bool checkOverlap = false)
+        {
             var list = this.Nodes.ToList();
+            if (model.GUID == this.GUID) return;
             if (list.Where(x => x.GUID == model.GUID).Any()) return;
-            if (!CheckModelIsInsideGroup(model, checkOverlap)) return;           
+            if (!CheckModelIsInsideGroup(model, checkOverlap)) return;
             list.Add(model);
             this.Nodes = list;
+            if (model is AnnotationModel annotationModel) annotationModel.OnAddedToGroup();
             this.UpdateBoundaryFromSelection();
+            UpdateErrorAndWarningIconVisibility();
+        }
+
+        private void UnsubscribeRemovedModel(ModelBase model)
+        {
+            model.PropertyChanged -= model_PropertyChanged;
+            model.Disposed -= model_Disposed;
+            if (model is AnnotationModel annotationModel)
+            {
+                annotationModel.OnRemovedFromGroup();
+            }
         }
 
         private bool CheckModelIsInsideGroup(ModelBase model, bool checkOverlap)
@@ -509,6 +767,11 @@ namespace Dynamo.Graph.Annotations
         {
             foreach (var models in Nodes)
             {
+                if (models is AnnotationModel annotationModel)
+                {
+                    annotationModel.Select();
+                    continue;
+                }
                 models.IsSelected = true;
             }
 
@@ -522,12 +785,30 @@ namespace Dynamo.Graph.Annotations
         /// </summary>
         public override void Deselect()
         {           
-            foreach (var models in Nodes)
+            foreach (var model in Nodes)
             {
-                models.IsSelected = false;
-            }   
-       
+                model.IsSelected = false;
+                // De-select all elements under the deleted group if there is any nested group
+                if (model is AnnotationModel)
+                {
+                    (model as AnnotationModel).Deselect();
+                }
+            }
+
             base.Deselect();
+        }
+
+        /// <summary>
+        /// Checks if the provided modelbase belongs
+        /// to this group.
+        /// </summary>
+        /// <param name="modelBase">modelbase to check if belongs to this group</param>
+        /// <returns></returns>
+        public bool ContainsModel(ModelBase modelBase)
+        {
+            if (modelBase is null) return false;
+
+            return nodes.Contains(modelBase);
         }
 
         /// <summary>
@@ -540,7 +821,7 @@ namespace Dynamo.Graph.Annotations
                 foreach (var model in this.Nodes)
                 {
                     model.PropertyChanged -= model_PropertyChanged;
-                    model.Disposed -= model_Disposed;                    
+                    model.Disposed -= model_Disposed;
                 }
             }
             base.Dispose();

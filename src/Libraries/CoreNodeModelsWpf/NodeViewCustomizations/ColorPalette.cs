@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using System.Windows;
 using System.Windows.Media;
 using CoreNodeModels.Input;
 using CoreNodeModelsWpf.Controls;
@@ -30,13 +31,12 @@ namespace CoreNodeModelsWpf.Nodes
             colorPaletteNode = model;
             converter = new Converters.MediatoDSColorConverter();
             ColorPaletteUINode = new ColorPaletteUI();
+            ColorPaletteUINode.HorizontalAlignment = HorizontalAlignment.Left;
+            ColorPaletteUINode.VerticalAlignment = VerticalAlignment.Top;
             ColorPaletteUINode.xceedColorPickerControl.Closed += ColorPickerControl_Closed;
             colorPaletteNode.PropertyChanged += ColorPaletteNode_PropertyChanged;
             nodeView.ContentGrid.Children.Add(ColorPaletteUINode);
 
-
-            var undoRecorder = viewNode.ViewModel.WorkspaceViewModel.Model.UndoRecorder;
-            WorkspaceModel.RecordModelForModification(colorPaletteNode, undoRecorder);
             //kick off ui to match initial model state.
             this.ColorPaletteNode_PropertyChanged(ColorPaletteUINode, new PropertyChangedEventArgs("DsColor"));
         }
@@ -66,7 +66,8 @@ namespace CoreNodeModelsWpf.Nodes
             var convertedModelColor = ((Color)(converter.Convert(colorPaletteNode.DsColor, null, null, null)));
             var isSameColor = convertedModelColor
                  .Equals(ColorPaletteUINode.xceedColorPickerControl.SelectedColor);
-            if (!isSameColor)
+
+            if (ColorPaletteUINode.xceedColorPickerControl.SelectedColor != null && !isSameColor)
             {
                 //we need to record the colorPicker node before the model is updated.
                 var undoRecorder = viewNode.ViewModel.WorkspaceViewModel.Model.UndoRecorder;
