@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -108,7 +107,7 @@ namespace Dynamo.Notifications
         private void LoadNotificationCenter()
         {
             var dynamoView = viewLoadedParams.DynamoWindow as DynamoView;
-            notificationCenterController = new NotificationCenterController(dynamoView);
+            notificationCenterController = new NotificationCenterController(dynamoView, logger);
         }
 
         internal void AddNotifications()
