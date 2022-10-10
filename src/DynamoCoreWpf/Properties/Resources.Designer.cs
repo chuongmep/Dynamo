@@ -124,6 +124,15 @@ namespace Dynamo.Wpf.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Add File Path.
+        /// </summary>
+        public static string AddFilePathButtonName {
+            get {
+                return ResourceManager.GetString("AddFilePathButtonName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Add File to Package....
         /// </summary>
         public static string AddFileToPackageDialogTitle {
@@ -210,6 +219,15 @@ namespace Dynamo.Wpf.Properties {
         public static string BackgroundPreviewName {
             get {
                 return ResourceManager.GetString("BackgroundPreviewName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Minute(s) between backups.
+        /// </summary>
+        public static string BackupInternalUnit {
+            get {
+                return ResourceManager.GetString("BackupInternalUnit", resourceCulture);
             }
         }
         
@@ -2513,6 +2531,24 @@ namespace Dynamo.Wpf.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Export.
+        /// </summary>
+        public static string ExportPreferencesText {
+            get {
+                return ResourceManager.GetString("ExportPreferencesText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Select Folder to Export.
+        /// </summary>
+        public static string ExportSettingsDialogTitle {
+            get {
+                return ResourceManager.GetString("ExportSettingsDialogTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Extension tab added to the extensions side bar..
         /// </summary>
         public static string ExtensionAdded {
@@ -2617,6 +2653,15 @@ namespace Dynamo.Wpf.Properties {
         public static string FileDialogDynamoWorkspace {
             get {
                 return ResourceManager.GetString("FileDialogDynamoWorkspace", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Settings Files ({0})|{0}.
+        /// </summary>
+        public static string FileDialogImportSettingsFiles {
+            get {
+                return ResourceManager.GetString("FileDialogImportSettingsFiles", resourceCulture);
             }
         }
         
@@ -3278,6 +3323,51 @@ namespace Dynamo.Wpf.Properties {
         public static string ImportLibraryDialogTitle {
             get {
                 return ResourceManager.GetString("ImportLibraryDialogTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Your custom settings can be imported here. It will be applied once Dynamo and any host program restarts.
+        /// </summary>
+        public static string ImportPreferencesInfo {
+            get {
+                return ResourceManager.GetString("ImportPreferencesInfo", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Import.
+        /// </summary>
+        public static string ImportPreferencesText {
+            get {
+                return ResourceManager.GetString("ImportPreferencesText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Import Settings.
+        /// </summary>
+        public static string ImportSettingsDialogTitle {
+            get {
+                return ResourceManager.GetString("ImportSettingsDialogTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Import Failed.
+        /// </summary>
+        public static string ImportSettingsFailedMessage {
+            get {
+                return ResourceManager.GetString("ImportSettingsFailedMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Import Success.
+        /// </summary>
+        public static string ImportSettingsSuccessMessage {
+            get {
+                return ResourceManager.GetString("ImportSettingsSuccessMessage", resourceCulture);
             }
         }
         
@@ -6230,6 +6320,42 @@ namespace Dynamo.Wpf.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Auto-Backup Interval.
+        /// </summary>
+        public static string PreferencesSettingBackupInterval {
+            get {
+                return ResourceManager.GetString("PreferencesSettingBackupInterval", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Custom Python Template File Path.
+        /// </summary>
+        public static string PreferencesSettingCustomPythomTemplate {
+            get {
+                return ResourceManager.GetString("PreferencesSettingCustomPythomTemplate", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Use Hardware Acceleration.
+        /// </summary>
+        public static string PreferencesSettingHardwareAcceleration {
+            get {
+                return ResourceManager.GetString("PreferencesSettingHardwareAcceleration", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Maximum Number of Recent Files.
+        /// </summary>
+        public static string PreferencesSettingMaxRecentFiles {
+            get {
+                return ResourceManager.GetString("PreferencesSettingMaxRecentFiles", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Style name already in use.
         /// </summary>
         public static string PreferencesViewAlreadyExistingStyleWarning {
@@ -7229,6 +7355,15 @@ namespace Dynamo.Wpf.Properties {
         public static string PublishPackageViewTitle {
             get {
                 return ResourceManager.GetString("PublishPackageViewTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Add a file path for Python Node Template.
+        /// </summary>
+        public static string PythonTemplateAddPathTooltip {
+            get {
+                return ResourceManager.GetString("PythonTemplateAddPathTooltip", resourceCulture);
             }
         }
         

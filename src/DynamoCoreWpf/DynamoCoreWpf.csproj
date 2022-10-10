@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <ImportGroup Label="PropertySheets">
     <Import Project="$(SolutionDir)Config\CS_SDK.props" />
   </ImportGroup>
@@ -1483,7 +1483,10 @@
     <Resource Include="UI\Images\Folder.png" />
     <Resource Include="UI\Images\caret_down_grey_48px.png" />
     <Resource Include="UI\Images\caret_up_grey_48px.png" />
+    <Resource Include="UI\Images\caret_down_hover_48px.png" />
+    <Resource Include="UI\Images\caret_up_hover_48px.png" />
     <Resource Include="UI\Images\menu_grey_48px.png" />
+    <Resource Include="UI\Images\menu_hover_48px.png" />
     <Resource Include="UI\Images\NodeIcon_placeholder.png" />
     <Resource Include="UI\Images\custom-node.png" />
     <Resource Include="UI\Images\image-icon-default.png" />
@@ -1491,6 +1494,10 @@
     <EmbeddedResource Include="Views\GuidedTour\HtmlPages\Resources\DynamoPackages_1_1.png" />
     <Resource Include="UI\Images\default_info_16px.png" />
     <Resource Include="UI\Images\clock-icon.png" />
+    <Resource Include="UI\Images\question-default-16px.png" />
+    <Resource Include="UI\Images\question-hover-16px.png" />
+    <Resource Include="UI\Images\info-default-16px.png" />
+    <Resource Include="UI\Images\info-hover-16px.png" />
     <Resource Include="UI\Images\Pin_NoBackground_16px.png" />
     <EmbeddedResource Include="Views\GuidedTour\HtmlPages\learnPackages.html" />
     <Resource Include="UI\Images\info_2.png" />
