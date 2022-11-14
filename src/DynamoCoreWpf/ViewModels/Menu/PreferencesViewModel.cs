@@ -6,11 +6,9 @@ using System.ComponentModel;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Resources;
 using Dynamo.Configuration;
 using Dynamo.Core;
 using Dynamo.Events;
-using Dynamo.Graph.Workspaces;
 using Dynamo.Logging;
 using Dynamo.Models;
 using Dynamo.PackageManager;
@@ -51,11 +49,13 @@ namespace Dynamo.ViewModels
         private ObservableCollection<string> languagesList;
         private ObservableCollection<string> packagePathsForInstall;
         private ObservableCollection<string> fontSizeList;
+        private ObservableCollection<int> groupStyleFontSizeList;
         private ObservableCollection<string> numberFormatList;
         private StyleItem addStyleControl;
         private ObservableCollection<string> pythonEngineList;
 
         private RunType runSettingsIsChecked;
+        private NodeAutocompleteSuggestion nodeAutocompleteSuggestion;
         private Dictionary<string, TabSettings> preferencesTabs;
 
         private readonly PreferenceSettings preferenceSettings;
@@ -258,6 +258,32 @@ namespace Dynamo.ViewModels
         }
 
         /// <summary>
+        /// Controls if the the Node autocomplete Machine Learning option is checked for the radio buttons
+        /// </summary>
+        public bool NodeAutocompleteMachineLearningIsChecked
+        {
+            get
+            {
+                return preferenceSettings.DefaultNodeAutocompleteSuggestion == NodeAutocompleteSuggestion.MLRecommendation;                
+            }
+            set
+            {
+                if (value)
+                {
+                    preferenceSettings.DefaultNodeAutocompleteSuggestion = NodeAutocompleteSuggestion.MLRecommendation;
+                    nodeAutocompleteSuggestion = NodeAutocompleteSuggestion.MLRecommendation;
+                }
+                else
+                {
+                    preferenceSettings.DefaultNodeAutocompleteSuggestion = NodeAutocompleteSuggestion.ObjectType;
+                    nodeAutocompleteSuggestion = NodeAutocompleteSuggestion.ObjectType;
+                }
+                dynamoViewModel.HomeSpaceViewModel.NodeAutoCompleteSearchViewModel.ResetAutoCompleteSearchViewState();
+                RaisePropertyChanged(nameof(nodeAutocompleteSuggestion));
+            }
+        }
+
+        /// <summary>
         /// Controls the IsChecked property in the Show Run Preview toogle button
         /// </summary>
         public bool RunPreviewIsChecked
@@ -271,6 +297,22 @@ namespace Dynamo.ViewModels
                 preferenceSettings.ShowRunPreview = value;
                 dynamoViewModel.ShowRunPreview = value;
                 RaisePropertyChanged(nameof(RunPreviewIsChecked));
+            }
+        }
+
+        /// <summary>
+        /// Controls the IsChecked property in the Show Static Splash Screen toogle button
+        /// </summary>
+        public bool StaticSplashScreenEnabled
+        {
+            get
+            {
+                return preferenceSettings.EnableStaticSplashScreen;
+            }
+            set
+            {
+                preferenceSettings.EnableStaticSplashScreen = value;
+                RaisePropertyChanged(nameof(StaticSplashScreenEnabled));
             }
         }
 
@@ -425,6 +467,21 @@ namespace Dynamo.ViewModels
                 RaisePropertyChanged(nameof(FontSizeList));
             }
         }
+        /// <summary>
+        /// GroupStyleFontSizeList contains the list of sizes for defined fonts to be applied to a GroupStyle
+        /// </summary>
+        public ObservableCollection<int> GroupStyleFontSizeList
+        {
+            get
+            {
+                return groupStyleFontSizeList;
+            }
+            set
+            {
+                groupStyleFontSizeList = value;
+                RaisePropertyChanged(nameof(GroupStyleFontSizeList));
+            }
+        }
 
         /// <summary>
         /// NumberFormatList contains the list of the format for numbers, right now in Dynamo has the next formats: 0, 0.0, 0.00, 0.000, 0.0000
@@ -464,9 +521,10 @@ namespace Dynamo.ViewModels
         /// <param name="style">style to be added</param>
         public void AddStyle(StyleItem style)
         {
-            preferenceSettings.GroupStyleItemsList.Add(new GroupStyleItem { 
-                HexColorString = style.HexColorString, 
-                Name = style.Name, 
+            preferenceSettings.GroupStyleItemsList.Add(new GroupStyleItem {
+                HexColorString = style.HexColorString,
+                Name = style.Name,
+                FontSize = style.FontSize,
                 IsDefault = style.IsDefault
             });
             RaisePropertyChanged(nameof(StyleItemsList));
@@ -888,6 +946,28 @@ namespace Dynamo.ViewModels
             }
             newPreferences.CopyProperties(preferenceSettings);
 
+            return setSettings(newPreferences);
+        }
+
+        /// <summary>
+        /// Returns a boolean value indicating if the Settings importing was successful or not by sending the content of the xml file
+        /// </summary>
+        /// <param name="content"></param>
+        /// <returns></returns>
+        public bool importSettingsContent(string content)
+        {
+            var newPreferences = PreferenceSettings.LoadContent(content);
+            if (!newPreferences.IsCreatedFromValidFile)
+            {
+                return false;
+            }
+            newPreferences.CopyProperties(preferenceSettings);
+
+            return setSettings(newPreferences);
+        }
+
+        private bool setSettings(PreferenceSettings newPreferences)
+        {
             // Explicit copy
             preferenceSettings.SetTrustWarningsDisabled(newPreferences.DisableTrustWarnings);
             preferenceSettings.SetTrustedLocations(newPreferences.TrustedLocations);
@@ -901,6 +981,7 @@ namespace Dynamo.ViewModels
             dynamoViewModel.RenderPackageFactoryViewModel.ShowEdges = preferenceSettings.ShowEdges;
             PackagePathsForInstall = null;
             PackagePathsViewModel?.InitializeRootLocations();
+            SelectedPackagePathForInstall = preferenceSettings.SelectedPackagePathForInstall;
 
             dynamoViewModel.IsShowingConnectors = preferenceSettings.ShowConnector;
             dynamoViewModel.IsShowingConnectorTooltip = preferenceSettings.ShowConnectorToolTip;
@@ -913,9 +994,10 @@ namespace Dynamo.ViewModels
                 }
             }
 
+            preferenceSettings.SanitizeValues();
             RaisePropertyChanged(string.Empty);
             return true;
-        }
+        }        
 
         /// <summary>
         /// The PreferencesViewModel constructor basically initialize all the ItemsSource for the corresponding ComboBox in the View (PreferencesView.xaml)
@@ -950,6 +1032,8 @@ namespace Dynamo.ViewModels
                 Wpf.Properties.Resources.ScalingExtraLargeButton
             };
             SelectedFontSize = Wpf.Properties.Resources.ScalingMediumButton;
+
+            GroupStyleFontSizeList = preferenceSettings.PredefinedGroupStyleFontSizes;
 
             // Number format settings
             NumberFormatList = new ObservableCollection<string>
@@ -1254,6 +1338,7 @@ namespace Dynamo.ViewModels
                     goto default;
                 case nameof(MaxNumRecentFiles):
                     description = Resources.ResourceManager.GetString(nameof(Res.PreferencesSettingMaxRecentFiles), System.Globalization.CultureInfo.InvariantCulture);
+                    UpdateRecentFiles();
                     goto default;
                 case nameof(PythonTemplateFilePath):
                     description = Resources.ResourceManager.GetString(nameof(Res.PreferencesSettingCustomPythomTemplate), System.Globalization.CultureInfo.InvariantCulture);
@@ -1348,8 +1433,7 @@ namespace Dynamo.ViewModels
         {
             IsEnabledAddStyleButton = true;
             IsSaveButtonEnabled = true;
-            AddStyleControl.Name = String.Empty;
-            AddStyleControl.HexColorString = GetRandomHexStringColor();
+            AddStyleControl = new StyleItem();
             IsWarningEnabled = false;
             IsVisibleAddStyleBorder = false;          
         }
@@ -1381,6 +1465,14 @@ namespace Dynamo.ViewModels
             if (e.Action == NotifyCollectionChangedAction.Add)
             {
                 AddPythonEnginesOptions();
+            }
+        }
+
+        private void UpdateRecentFiles()
+        {
+            if (dynamoViewModel.RecentFiles.Count > MaxNumRecentFiles)
+            {
+                dynamoViewModel.RecentFiles.RemoveRange(MaxNumRecentFiles, dynamoViewModel.RecentFiles.Count - MaxNumRecentFiles);
             }
         }
     }
